@@ -25,7 +25,7 @@ export function savePet(storage, state) {
 }
 
 export function loadPrefs(storage) {
-  try { return { muted: false, ...(JSON.parse(storage.getItem(PREFS_KEY)) || {}) }; } catch { return { muted: false }; }
+  try { return { muted: false, voice: true, ...(JSON.parse(storage.getItem(PREFS_KEY)) || {}) }; } catch { return { muted: false, voice: true }; }
 }
 
 export function savePrefs(storage, prefs) {

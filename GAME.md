@@ -20,7 +20,8 @@ Fichier local `vendor/phaser.min.js` : pas de CDN au moment du jeu.
 | Dormir / Réveiller | bouton 3 | `3` |
 | Nettoyer | bouton 4 | `4` |
 | Regarder le doigt | toucher la tête ou le corps | — |
-| Son oui/non | icône haut-droite | — |
+| Son oui/non (musique, bips, voix) | icône haut-droite (haut-parleur) | — |
+| Voix oui/non | icône à gauche du haut-parleur (bulle) | — |
 
 Les boutons font 156x214 unités sur 720x1600, soit environ 90x122 px CSS sur un téléphone 412 px de large (cible tactile > 64 px).
 Un bouton s'allume en or quand le besoin lié est sous 30.
@@ -53,6 +54,40 @@ cou sombre, corps conique plus large aux épaules, deux chevrons or, base noire.
 reste lisible sur téléphone. **Tour de tête** : une valeur `turn` (−1 à 1) déplace la tête, la lunette, le visage (écrasé en largeur) et la fente
 caméra à des vitesses différentes, ce qui donne un effet de rotation. Il regarde de lui-même à gauche ou à droite de temps en temps.
 
+
+## Musique
+Boucle instrumentale de 96,000 s (40 mesures à 100 BPM), découpée du fichier Suno `tamagotchi-loop-v1.mp3` (98,04 s).
+Le morceau original fond à partir de ~96,4 s : on coupe à la barre 40, juste avant le fondu, et on applique un fondu croisé à puissance égale de 50 ms
+au début du fichier (les 50 ms juste après le point de boucle se mélangent aux 50 ms du début). Au raccord, l'écart d'échantillon est de 0,001.
+Fichiers : `assets/music/theme.ogg` (Vorbis, ~131 kb/s, 96,000 s exactes) et `theme.mp3` (128 kb/s, repli).
+Lecture par WebAudio (`AudioBufferSourceNode.loop`, `loopStart = 0`, `loopEnd = 96`) : pas de trou dû au padding d'un encodeur MP3.
+La musique démarre au premier toucher, volume 0,32. Le bouton muet coupe aussi les bips et la voix (préférences dans `tem.prefs.v1`).
+
+## Voix (`src/voice.js`)
+14 répliques (texte officiel de SCRIPT.md). Une seule à la fois. Délai global de 7 s, plus un délai par réplique
+(alertes de jauge basse : 60 s ou plus). La voix baisse la musique à 35 % de son volume, puis la remonte en fondu.
+Un bouton « bulle » coupe seulement la voix, aussi mémorisé. Pendant la réplique, le texte s'affiche dans une bulle dorée sous les jauges.
+
+| id | Déclencheur |
+|---|---|
+| `salut` | Premier toucher de la session (« Salut Pascal ! ») |
+| `content_mange` | Soin Nourrir réussi |
+| `jouer` | Soin Jouer réussi |
+| `propre` | Soin Nettoyer réussi |
+| `bonne_nuit` | On l'envoie dormir |
+| `reveil` | On le réveille |
+| `merci` | Toucher la tête dans les 20 s après un soin Nourrir/Jouer/Nettoyer réussi (délai global passé) |
+| `faim` | Nourriture sous 30 |
+| `fatigue` | Énergie ou sommeil sous 30 |
+| `ennui` | Plaisir sous 30 |
+| `sale` | Propreté sous 30 |
+| `triste` | Humeur triste (moyenne sous 35, sans jauge critique) |
+| `batterie_faible` | Énergie sous 20, ou au moins deux jauges sous 20 |
+| `content` | Humeur content, délai 90 s |
+
+Les répliques d'action passent avant les alertes de jauge. Pas de voix pendant qu'il dort (sauf « Bonne nuit » et « Bon matin »).
+La logique est testée sans le navigateur ; le jeu parle via WebAudio.
+
 ## Look
 Fond sombre bleu-nuit pour faire ressortir le rouge, accent or (comme les chevrons), barres cyan qui passent à l'or puis au rouge qui pulse quand le besoin est critique.
 Titre en Press Start 2P, textes en Rubik. Icônes pixel (hamburger, étoile, lune, goutte).
@@ -65,17 +100,22 @@ Mise en page 720x1600 (ratio 9:20 comme le S20 FE), marges haut et bas pour les 
 | Phaser 3.90.0 | https://phaser.io, npm `phaser` | MIT |
 | Press Start 2P | Google Fonts, CodeMan38 | SIL OFL 1.1 |
 | Rubik | Google Fonts | SIL OFL 1.1 |
-| Sons | générés par code (WebAudio), aucun fichier | — |
+| Sons (bips) | générés par code (WebAudio), aucun fichier | — |
+| Musique de fond | Suno, *Tamagotchi Elon Man - Robot Pet Loop* (`tamagotchi-loop-v1.mp3`, id `7ce97a9d-6d4d-451d-b284-38d234fe515e`), générée pour Pascal le 25 nov. 2026. Boucle de 96 s préparée pour ce jeu. | Générée pour Pascal |
+| Voix (14 répliques) | ElevenLabs, voix Philippine Dynamique Acting Voice (`Yx2a8qp2EqI9c5i8MzBo`), modèle `eleven_v4`, recette B figée par Pascal le 25 nov. 2026. Textes : SCRIPT.md / MANIFEST.md du dépôt audio. Fichiers `assets/voix/<id>.mp3` (mono, 44,1 kHz, 96 kb/s). | Générées pour Pascal |
 | Icônes, visages, robot | faits par code pour ce jeu | MIT |
 
 ## Tests
-`npm test` : 34 tests Node (logique : déclin, actions, limites 0–100, humeur, sauvegarde/chargement, rattrapage hors ligne ; visage : taille, hors-cercle, déterminisme, animation, RGB565 ; stockage).
+`npm test` : 48 tests Node (logique, visage, stockage, voix : correspondance des 14 répliques, délais global et par ligne, priorité, merci, muet / voix coupée).
 
 ## Limites connues
 - Pas de vrai test sur un S20 FE physique : vérifié en Chrome sans écran (émulation 412x915).
 - Pas de notification quand le robot a faim (une web app ne peut pas le faire fiablement sans serveur).
 - Un seul robot, pas de nom ni de choix de couleur.
 - Le sommeil ne se réveille pas tout seul quand la page est fermée avant la fin : il est rattrapé à la réouverture.
+- La boucle musicale coupe le fondu final du fichier Suno (après 96,4 s) : on n'entend pas les ~2 s de conclusion.
+- Vérification vocale de la musique : analyse spectrale seulement (pas d'écoute humaine ici). Pas de sifflantes typiques d'une voix, presque pas d'énergie au-dessus de 4 kHz, partiels en escalier d'instrument. Je ne peux pas garantir à 100 % l'absence de chœur très bas dans le mix.
+- Les files voix sont déjà en 96 kb/s mono : copiées telles quelles, sans recompression.
 
 ## Prochaines idées
 - Brancher le vrai Elon Man : un petit pont USB/WebSerial qui envoie `toRGB565(fb)` à l'ESP32-S3, et `gaze` aux servos.

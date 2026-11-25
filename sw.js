@@ -1,8 +1,9 @@
 // Simple versioned service worker: network first (so a new deploy always wins), cache as offline fallback.
-const VERSION = 'tem-v1';
-const CORE = ['./', 'index.html', 'src/main.js', 'src/logic.js', 'src/face.js', 'src/audio.js', 'src/storage.js',
+const VERSION = 'tem-v2';
+const CORE = ['./', 'index.html', 'src/main.js', 'src/logic.js', 'src/face.js', 'src/audio.js', 'src/voice.js', 'src/storage.js',
   'src/scenes/GameScene.js', 'src/ui/icons.js', 'src/ui/robot.js', 'vendor/phaser.min.js',
-  'fonts/PressStart2P.woff2', 'fonts/Rubik-var.woff2', 'manifest.webmanifest', 'assets/icon-192.png'];
+  'fonts/PressStart2P.woff2', 'fonts/Rubik-var.woff2', 'manifest.webmanifest', 'assets/icon-192.png',
+  'assets/music/theme.ogg', 'assets/music/theme.mp3'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));

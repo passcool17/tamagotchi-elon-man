@@ -39,3 +39,11 @@ test('prefs default to sound on and persist', () => {
   savePrefs(st, { muted: true });
   assert.equal(loadPrefs(st).muted, true);
 });
+
+test('prefs default to voice on and persist a voice-off flag', () => {
+  const st = fake();
+  assert.equal(loadPrefs(st).voice, true);
+  savePrefs(st, { muted: false, voice: false });
+  assert.equal(loadPrefs(st).voice, false);
+  assert.equal(loadPrefs(st).muted, false);
+});

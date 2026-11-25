@@ -6,6 +6,7 @@ import {
 import { createFramebuffer, renderFace, toRGBA, FB_SIZE } from '../face.js';
 import { loadPet, savePet, loadPrefs, savePrefs } from '../storage.js';
 import { createAudio } from '../audio.js';
+import { consider, createVoiceMemory, VOICE_IDS } from '../voice.js';
 import { buildIcons, ICON_PX } from '../ui/icons.js';
 import { buildRobotTextures, createRobot, ROBOT } from '../ui/robot.js';
 
@@ -40,7 +41,9 @@ export class GameScene extends Phaser.Scene {
   create() {
     this.storage = this.registry.get('storage');
     this.prefs = loadPrefs(this.storage);
-    this.audio = createAudio({ muted: this.prefs.muted });
+    this.audio = createAudio({ muted: this.prefs.muted, voice: this.prefs.voice !== false });
+    this.voiceMem = createVoiceMemory();
+    this.captionUntil = 0;
     this.state = loadPet(this.storage, Date.now());
     this.activity = null;     // { mood, until }
     this.shown = {};          // smoothed stat values for the bars
@@ -70,14 +73,15 @@ export class GameScene extends Phaser.Scene {
 
     // Tap the head: it turns to look at the finger. Costs nothing.
     this.input.on('pointerdown', (p) => {
-      this.audio.unlock();
+      this.onUnlock();
       if (p.y > ROBOT.headY - 190 && p.y < ROBOT.baseY + 40 && p.x > 120 && p.x < 600) {
         this.glance(p.x < W / 2 ? -1 : 1, 900);
         this.audio.play('look');
+        this.tryVoice('headtap');
       }
     });
     this.input.keyboard?.on('keydown', (e) => {
-      this.audio.unlock();
+      this.onUnlock();
       const b = BUTTONS.find((x) => x.key === e.key);
       if (b) this.doAction(b.id);
     });
@@ -98,6 +102,17 @@ export class GameScene extends Phaser.Scene {
       mood: () => this.currentMood(),
       faceMood: () => this.faceMood,
       turn: () => this.robot.turn,
+      speak: (id, opts) => this.tryVoice(id, opts || { force: true }),
+      voiceIds: () => VOICE_IDS.slice(),
+      voiceMem: () => ({ ...this.voiceMem, lastAt: { ...this.voiceMem.lastAt } }),
+      musicTime: () => this.audio.musicTime(),
+      skipTo: (s) => this.audio.skipTo(s),
+      musicPlaying: () => this.audio.musicPlaying(),
+      voicePlaying: () => this.audio.voicePlaying(),
+      ducking: () => this.audio.ducking(),
+      muted: () => this.prefs.muted,
+      voiceOn: () => this.prefs.voice !== false,
+      ctxState: () => this.audio.ctxState(),
     };
 
     this.simulate(true);
@@ -129,18 +144,32 @@ export class GameScene extends Phaser.Scene {
     const title = this.add.text(40, 58, 'ELON MAN', { fontFamily: FONT_PX, fontSize: '30px', color: '#f2b01e' }).setDepth(d);
     const sub = this.add.text(42, 106, '', { fontFamily: FONT_UI, fontSize: '24px', fontStyle: '500', color: COL.dim }).setDepth(d);
     this.subText = sub;
-    // mute button
+    // mute (music+sfx+voice) and voice-only toggles
     this.muteBtn = this.add.image(W - 84, 82, this.prefs.muted ? 'icon-muted' : 'icon-sound').setDepth(d).setScale(0.8);
     const hit = this.add.rectangle(W - 84, 82, 112, 112, 0xffffff, 0).setDepth(d).setInteractive({ useHandCursor: true });
     hit.on('pointerup', () => {
-      this.audio.unlock();
+      this.onUnlock();
       this.prefs.muted = !this.prefs.muted;
       this.audio.setMuted(this.prefs.muted);
       savePrefs(this.storage, this.prefs);
       this.muteBtn.setTexture(this.prefs.muted ? 'icon-muted' : 'icon-sound');
       if (!this.prefs.muted) this.audio.play('tap');
     });
-    this.hud.push(title, sub, this.muteBtn, hit);
+    const voiceOn = this.prefs.voice !== false;
+    this.voiceBtn = this.add.image(W - 196, 82, voiceOn ? 'icon-voice' : 'icon-voicemute').setDepth(d).setScale(0.8);
+    const vhit = this.add.rectangle(W - 196, 82, 112, 112, 0xffffff, 0).setDepth(d).setInteractive({ useHandCursor: true });
+    vhit.on('pointerup', () => {
+      this.onUnlock();
+      this.prefs.voice = this.prefs.voice === false;
+      this.audio.setVoice(this.prefs.voice !== false);
+      savePrefs(this.storage, this.prefs);
+      this.voiceBtn.setTexture(this.prefs.voice !== false ? 'icon-voice' : 'icon-voicemute');
+      if (this.prefs.voice !== false && !this.prefs.muted) {
+        this.audio.play('tap');
+        this.tryVoice('open');
+      }
+    });
+    this.hud.push(title, sub, this.muteBtn, hit, this.voiceBtn, vhit);
 
     // stat bars
     this.bars = {};
@@ -178,6 +207,64 @@ export class GameScene extends Phaser.Scene {
     this.msgText = this.add.text(W / 2, 1176, '', {
       fontFamily: FONT_UI, fontSize: '34px', fontStyle: '600', color: COL.text, align: 'center',
     }).setOrigin(0.5).setDepth(10);
+    this.captionBg = this.add.graphics().setDepth(31).setAlpha(0);
+    this.captionText = this.add.text(W / 2, 455, '', {
+      fontFamily: FONT_UI, fontSize: '30px', fontStyle: '600', color: '#1a140c', align: 'center',
+      wordWrap: { width: 560 },
+    }).setOrigin(0.5).setDepth(32).setAlpha(0);
+  }
+
+  showCaption(text, ms) {
+    if (!text) return;
+    this.captionText.setText(text);
+    const padX = 28, padY = 16;
+    const w = Math.min(600, Math.max(200, this.captionText.width + padX * 2));
+    const h = this.captionText.height + padY * 2;
+    const x = (W - w) / 2, y = 455 - h / 2;
+    const g = this.captionBg;
+    g.clear();
+    g.fillStyle(0xffe08a, 1);
+    g.fillRoundedRect(x, y, w, h, 22);
+    g.lineStyle(3, 0x9a6a00, 0.55);
+    g.strokeRoundedRect(x, y, w, h, 22);
+    // little tail toward the head
+    g.fillStyle(0xffe08a, 1);
+    g.fillTriangle(W / 2 - 16, y + h, W / 2 + 16, y + h, W / 2, y + h + 18);
+    this.captionBg.setAlpha(1);
+    this.captionText.setAlpha(1);
+    this.captionUntil = this.time.now + ms;
+  }
+
+  hideCaption() {
+    this.captionBg.setAlpha(0);
+    this.captionText.setAlpha(0);
+    this.captionText.setText('');
+  }
+
+  onUnlock() {
+    const p = this.audio.unlock();
+    // Salut after the first gesture, once the buffers are in.
+    const greet = () => { if (!this.voiceMem.greeted) this.tryVoice('open'); };
+    if (p && typeof p.then === 'function') p.then(greet).catch(() => {});
+    else greet();
+  }
+
+  tryVoice(event, { force = false } = {}) {
+    const now = Date.now();
+    const guessed = 2000;
+    const r = consider({
+      now, event, state: this.state, mem: this.voiceMem,
+      muted: this.prefs.muted, voice: this.prefs.voice !== false,
+      durationMs: guessed, force,
+    });
+    this.voiceMem = r.mem;
+    if (!r.id) return null;
+    const durSec = this.audio.speak(r.id);
+    const durMs = Math.max(800, Math.round((durSec || 1.8) * 1000));
+    // Keep busyUntil honest now that we know the real duration.
+    this.voiceMem = { ...this.voiceMem, busyUntil: now + durMs };
+    this.showCaption(r.text, durMs + 400);
+    return r.id;
   }
 
   buildFooter() {
@@ -197,7 +284,7 @@ export class GameScene extends Phaser.Scene {
       c.add([g, icon, label]);
       const btn = { def, c, g, icon, label, bw, bh, pressed: false, enabled: true, hint: false, cx, cy };
       const zone = this.add.rectangle(cx, cy, bw, bh, 0xffffff, 0).setDepth(11).setInteractive({ useHandCursor: true });
-      zone.on('pointerdown', () => { btn.pressed = true; this.audio.unlock(); this.drawButton(btn); });
+      zone.on('pointerdown', () => { btn.pressed = true; this.onUnlock(); this.drawButton(btn); });
       zone.on('pointerout', () => { if (btn.pressed) { btn.pressed = false; this.drawButton(btn); } });
       zone.on('pointerup', () => {
         const was = btn.pressed;
@@ -263,6 +350,8 @@ export class GameScene extends Phaser.Scene {
       case 'wake': this.audio.play('wake'); this.activity = null; this.wakeStretch(); break;
       default: break;
     }
+    const voiceEvent = { eat: 'feed', play: 'play', clean: 'clean', sleep: 'sleep', wake: 'wake' }[r.event];
+    if (voiceEvent) this.tryVoice(voiceEvent);
     this.refreshButtons();
   }
 
@@ -384,6 +473,12 @@ export class GameScene extends Phaser.Scene {
 
     // message line
     if (time > this.msg.until) { this.setIdleMessage(); }
+    if (this.captionUntil && time > this.captionUntil) { this.hideCaption(); this.captionUntil = 0; }
+    // mood lines, at most once a second, and only after the greeting (or if salut is off)
+    if (this.voiceMem.greeted && time - (this.lastVoiceTick || 0) > 1000) {
+      this.lastVoiceTick = time;
+      this.tryVoice('tick');
+    }
 
     // sleeping veil
     this.veilTarget = this.state.sleeping ? 0.5 : 0;
@@ -392,7 +487,7 @@ export class GameScene extends Phaser.Scene {
 
   bringHudAboveVeil() {
     // keep buttons, header and the message readable while the room is dark
-    [this.msgText, this.subText, this.muteBtn].forEach((o) => o.setDepth(30));
+    [this.msgText, this.subText, this.muteBtn, this.voiceBtn].forEach((o) => o.setDepth(30));
     this.buttons.forEach((b) => b.c.setDepth(30));
     this.barGfx.setDepth(30);
     Object.values(this.bars).forEach((b) => { b.label.setDepth(30); b.val.setDepth(30); });

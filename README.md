@@ -13,7 +13,8 @@ Pensé d'abord pour téléphone (portrait, Samsung S20 FE), interface en frança
 - Quatre actions : **Nourrir, Jouer, Dormir, Nettoyer**. Toucher la tête le fait se tourner vers toi.
 - Sauvegarde automatique dans le navigateur (`localStorage`). Quand tu reviens après une absence, le temps écoulé est rattrapé
   (plafonné à 8 h, et plus doux que le temps réel : il ne meurt jamais).
-- Le son (petits bips WebAudio) démarre au premier toucher. Bouton muet en haut à droite.
+- Le son (musique + bips + voix) démarre au premier toucher. Bouton muet en haut à droite ; bouton bulle pour couper seulement la voix.
+- Musique de fond en boucle (96 s, Suno). 14 répliques parlées, une à la fois, la musique baisse pendant qu'il parle.
 - Clavier sur ordinateur : touches 1 à 4.
 
 Détails : voir [GAME.md](GAME.md).
@@ -34,7 +35,10 @@ index.html            page, polices locales, safe-area
 src/logic.js          ÉTAT PUR : stats, déclin, actions, humeur, sauvegarde, rattrapage hors ligne (aucun DOM)
 src/face.js           VISAGE PUR : humeur + temps -> framebuffer de pixels 240x240 (aucun DOM)
 src/storage.js        localStorage (injectable, tolère un stockage bloqué)
-src/audio.js          bips WebAudio
+src/audio.js          bips WebAudio, musique en boucle, lecture des voix
+src/voice.js          LOGIQUE PURE : quelle réplique dire, délais, priorité (aucun DOM)
+assets/music/         theme.ogg + theme.mp3 (boucle 96 s)
+assets/voix/          14 répliques mp3
 src/ui/robot.js       dessin du robot par le code + animation du tour de tête
 src/ui/icons.js       icônes pixel 12x12
 src/scenes/GameScene.js   colle tout dans Phaser (jauges, boutons, boucle)
@@ -84,6 +88,9 @@ peut traduire la même valeur en angle de servo.
 - Forme du robot (corps conique rouge, base noire, deux chevrons or, tête rouge, écran rond avec lunette grise, fente caméra) :
   d'après [passcool17/elon-man](https://github.com/passcool17/elon-man), `hardware/cad/elonman.scad`, licence MIT.
   Les couleurs du visage viennent de `firmware/elonman_body/face.h` du même dépôt.
+- Musique : Suno, *Tamagotchi Elon Man - Robot Pet Loop*, générée pour Pascal (25 nov. 2026).
+- Voix : ElevenLabs, Philippine Dynamique Acting Voice, modèle `eleven_v4`, générées pour Pascal (lot du 25 nov. 2026, recette B). Textes dans SCRIPT.md du dossier audio.
 - [Phaser](https://phaser.io) 3.90.0, MIT, fourni dans `vendor/`.
+
 - Polices : Press Start 2P (SIL OFL 1.1, CodeMan38) et Rubik (SIL OFL 1.1), téléchargées depuis Google Fonts et servies localement.
 - Tout le reste (dessin du robot, visages, icônes, sons) est fait par code pour ce projet.
