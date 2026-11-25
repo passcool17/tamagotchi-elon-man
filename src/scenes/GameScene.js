@@ -103,7 +103,6 @@ export class GameScene extends Phaser.Scene {
     this.simulate(true);
     this.setIdleMessage();
     this.refreshButtons(true);
-    this.cameras.main.fadeIn(350, 16, 18, 26);
   }
 
   // ---------- scene dressing ----------
@@ -235,7 +234,7 @@ export class GameScene extends Phaser.Scene {
       const label = b.def.id === 'sleep' ? (sleeping ? 'Réveiller' : 'Dormir') : b.def.label;
       if (force || b.enabled !== enabled || b.hint !== (hint || sleepHint) || b.label.text !== label) {
         b.enabled = enabled; b.hint = hint || sleepHint; b.label.setText(label);
-        if (b.def.id === 'sleep') b.icon.setTexture(sleeping ? 'icon-play' : 'icon-sleep');
+        if (b.def.id === 'sleep') b.icon.setTexture(sleeping ? 'icon-sun' : 'icon-sleep');
         this.drawButton(b);
       }
     }
