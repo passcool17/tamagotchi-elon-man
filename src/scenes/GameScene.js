@@ -71,7 +71,7 @@ export class GameScene extends Phaser.Scene {
 
     buildIcons(this);
     buildRobotTextures(this);
-    this.oled = createOledTextures(this);
+    this.oled = createOledTextures();
     this.brain = createBrain({ demoReply, getPrefs: () => this.prefs });
     this.chat = createChat({
       getPrefs: () => this.prefs,
@@ -83,7 +83,7 @@ export class GameScene extends Phaser.Scene {
     this.gatewayOk = null;
 
     this.buildBackground();
-    this.robot = createRobot(this);
+    this.robot = createRobot(this, this.oled);
     this.buildTelemetry();
     this.buildHud();
     this.buildButtons();
@@ -96,7 +96,7 @@ export class GameScene extends Phaser.Scene {
     // Tap the robot: the pan servo turns the head toward the finger. Costs nothing.
     this.input.on('pointerdown', (p) => {
       this.onUnlock();
-      if (p.y > ROBOT.pivotY - ROBOT.ry && p.y < ROBOT.baseY + 40 && p.x > 90 && p.x < 630) {
+      if (p.y > ROBOT.headTop && p.y < ROBOT.baseY + 40 && p.x > 90 && p.x < 630) {
         this.glance(p.x < W / 2 ? -1 : 1, 900);
         this.audio.play('look');
         this.tryVoice('headtap');
@@ -198,8 +198,9 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(0x62d6ff, 0.06);
     for (let y = 408; y < 1112; y += 32) for (let x = 16; x < W; x += 32) g.fillRect(x, y, 2, 2);
     // desk
-    g.fillStyle(0x0e1116, 1); g.fillRect(0, 1112, W, 128);
-    g.fillStyle(0x1d232b, 1); g.fillRect(0, 1112, W, 3);
+    const deskY = Math.round(ROBOT.baseY - ROBOT.baseH / 2 + 4);
+    g.fillStyle(0x0e1116, 1); g.fillRect(0, deskY, W, 1240 - deskY);
+    g.fillStyle(0x1d232b, 1); g.fillRect(0, deskY, W, 3);
   }
 
   buildTelemetry() {
@@ -347,7 +348,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildFooter() {
-    this.add.text(W / 2, 1500, 'PC17 · v2.0.1', { fontFamily: FONT_PX, fontSize: '18px', color: '#f2b01e' }).setOrigin(0.5).setDepth(10).setAlpha(0.9);
+    this.add.text(W / 2, 1500, 'PC17 · v2.1', { fontFamily: FONT_PX, fontSize: '18px', color: '#f2b01e' }).setOrigin(0.5).setDepth(10).setAlpha(0.9);
     this.add.text(W / 2, 1538, 'Robot : projet elon-man (MIT)', { fontFamily: FONT_UI, fontSize: '20px', color: COL.dim }).setOrigin(0.5).setDepth(10);
   }
 
@@ -480,7 +481,7 @@ export class GameScene extends Phaser.Scene {
   shake() { this.motion.gesture('refuse'); }
 
   burst(kind) {
-    const cx = ROBOT.cx, cy = ROBOT.pivotY - 260;
+    const cx = ROBOT.cx, cy = ROBOT.headTop - 40;
     const n = kind === 'bubble' ? 10 : 8;
     for (let i = 0; i < n; i++) {
       let o;
@@ -530,13 +531,13 @@ export class GameScene extends Phaser.Scene {
     if (time - this.lastFace > 50) {
       this.lastFace = time;
       const talk = talking ? 0.35 + 0.65 * Math.abs(Math.sin(time / 95) * Math.sin(time / 233)) : 0;
-      renderFace({ mood: this.faceMood, t: time, look: { x: pose.pan / 70, y: -pose.nod / 12 }, talk }, this.panels);
+      renderFace({ mood: this.faceMood, t: time, look: { x: pose.pan / 70, y: -pose.nod / 12 }, talk, plate: true }, this.panels);
       for (const k of ['eyeL', 'eyeR', 'mouth']) {
         const o = this.oled[k];
         toRGBA(this.panels[k], o.img.data, { grid: ROBOT.grid, on: OLED_ON, off: OLED_OFF });
         o.ctx.putImageData(o.img, 0, 0);
-        o.tex.refresh();
       }
+      this.robot.refreshFace();
     }
 
     // HUD

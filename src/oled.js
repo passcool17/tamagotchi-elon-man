@@ -3,6 +3,8 @@
 // Each panel is 128×64, 1 bit, same as firmware/elonman_body (FACE_OLED3, setRotation(0)).
 // A framebuffer is { w, h, px: Uint8Array(w*h) } with 0 = off, 1 = lit.
 
+import { cutoutMask } from './faceplate.js';
+
 export const PANEL_W = 128, PANEL_H = 64;
 export const EYE_W = PANEL_W, EYE_H = PANEL_H;
 export const OLED_MOODS = ['happy', 'idle', 'hungry', 'sleepy', 'sad', 'bored', 'dirty', 'sleeping',
@@ -167,12 +169,48 @@ function drawMouth(fb, mood, t, talk) {
   }
 }
 
+// ---------- v2.1 mouth behind the smile cutout ----------
+// The face plate only shows a thick smile-shaped slot of the mouth OLED, so the mouth expressions are
+// drawn as light patterns INSIDE that slot (how much of it is lit, where, moving how). Nothing outside
+// the slot is lit, so the firmware can push the exact same buffer to the real panel.
+const SLOT_HALF = 52; // half-length of the slot in panel pixels (8.6 mm × 5.89 px/mm ≈ 51)
+const hash = (a, b) => { const s = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453; return s - Math.floor(s); };
+function drawMouthSlot(fb, mood, t, talk) {
+  clear(fb);
+  const mask = cutoutMask('mouth');
+  const blob = (u0, r) => (u) => Math.abs(u - u0) <= r;
+  let lit;
+  switch (mood) {
+    case 'happy': { const s = ((t % 3200) / 700) - 1.3; lit = (u, v) => Math.abs(u - s) > 0.05 || v % 2 === 0; break; }   // full smile + a shimmer that sweeps across now and then
+    case 'playing': { const s = Math.sin(t / 180); lit = (u, v) => Math.abs(u - s) > 0.18 || (v & 1); break; }
+    case 'talking': { const lvl = Math.max(0.15, Math.min(1, talk)); lit = (u) => Math.abs(u) <= lvl && (Math.floor((u + 1) * 9 + t / 90) % 3 !== 0); break; }
+    case 'eating': { const o = 0.35 + 0.65 * Math.abs(Math.sin(t / 110)); lit = (u) => Math.abs(u) <= o; break; }
+    case 'hungry': { const o = Math.floor(t / 120); lit = (u) => (Math.floor((u + 1) * 8) + o) % 2 === 0; break; }
+    case 'sad': lit = (u) => Math.abs(u) <= 0.32; break;
+    case 'sleepy': lit = (u) => Math.abs(u) <= 0.18; break;
+    case 'bored': lit = (u, v) => Math.abs(u) <= 0.7 && (v + Math.round(u * SLOT_HALF)) % 2 === 0; break;
+    case 'dirty': { const k = Math.floor(t / 160); lit = (u, v) => hash(Math.round(u * SLOT_HALF), v + k) > 0.55; break; }
+    case 'cleaning': { const p = ((t / 900) % 1) * 2 - 1; lit = (u) => blob(p, 0.1)(u) || blob(p - 0.7, 0.07)(u) || blob(p + 0.7, 0.07)(u) || blob(p - 1.4, 0.07)(u); break; }
+    case 'sleeping': { const r = 0.08 + 0.05 * Math.sin(t / 600); lit = blob(0, r); break; }
+    case 'thinking': { const k = Math.floor(t / 280) % 3; lit = (u) => [-0.5, 0, 0.5].some((c, i) => Math.abs(u - c) <= (i === k ? 0.12 : 0.06)); break; }
+    default: lit = () => true; // idle: the whole smile glows
+  }
+  for (let y = 0; y < PANEL_H; y++) {
+    for (let x = 0; x < PANEL_W; x++) {
+      const i = y * PANEL_W + x;
+      if (mask[i] && lit((x - PANEL_W / 2) / SLOT_HALF, y)) fb.px[i] = 1;
+    }
+  }
+}
+
 // Render the whole face. look: {x,y} in [-1,1] (eyes lead the head turn). talk: 0..1 mouth level.
-export function renderFace({ mood = 'idle', t = 0, look = { x: 0, y: 0 }, talk = 0 } = {}, panels = createPanels()) {
+// plate: true = v2.1 face plate (mouth drawn inside the smile cutout). Eyes are the same either way:
+// the elliptical eye holes are larger than the eye drawings.
+export function renderFace({ mood = 'idle', t = 0, look = { x: 0, y: 0 }, talk = 0, plate = false } = {}, panels = createPanels()) {
   const m = OLED_MOODS.includes(mood) ? mood : 'idle';
   drawEye(panels.eyeL, m, t, 1, look);
   drawEye(panels.eyeR, m, t, -1, look);
-  drawMouth(panels.mouth, m, t, talk);
+  if (plate) drawMouthSlot(panels.mouth, m, t, talk); else drawMouth(panels.mouth, m, t, talk);
   return panels;
 }
 

@@ -1,9 +1,10 @@
 // Simple versioned service worker: network first (so a new deploy always wins), cache as offline fallback.
 // Same origin as the frozen v1 archive (/tamagotchi-elon-man-v1/, caches "tem-v1-proto-*"):
-// this worker only ever deletes its OWN old caches (tem-v1, tem-v2, older tem-2.x).
-const VERSION = 'tem-2.0.1';
+// and the frozen v2.0.1 prototype (/tamagotchi-elon-man-v2/, caches "tem-v2-proto-*"):
+// this worker only ever deletes its OWN old caches (tem-v1, tem-v2, older tem-2.x), never *-proto-*.
+const VERSION = 'tem-2.1';
 const OWN_OLD = (k) => /^tem-v\d+$/.test(k) || (k.startsWith('tem-2.') && k !== VERSION);
-const CORE = ['./', 'index.html', 'src/main.js', 'src/logic.js', 'src/oled.js', 'src/servo.js', 'src/audio.js', 'src/voice.js', 'src/storage.js',
+const CORE = ['./', 'index.html', 'src/main.js', 'src/logic.js', 'src/faceplate.js', 'src/oled.js', 'src/servo.js', 'src/audio.js', 'src/voice.js', 'src/storage.js',
   'src/brain/demo.js', 'src/brain/gateway.js', 'src/scenes/GameScene.js', 'src/ui/icons.js', 'src/ui/robot.js', 'src/ui/chat.js',
   'vendor/phaser.min.js', 'vendor/motion.js',
   'fonts/PressStart2P.woff2', 'fonts/Rubik-var.woff2', 'fonts/ChakraPetch-700.woff2', 'fonts/JetBrainsMono-500.woff2', 'manifest.webmanifest', 'assets/icon-192.png',

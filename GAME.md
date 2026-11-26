@@ -1,11 +1,11 @@
-# GAME.md — Tamagotchi Elon Man 2.0.1
+# GAME.md — Tamagotchi Elon Man 2.1
 
 ## Concept
 Un animal virtuel façon Tamagotchi, mais c'est Elon Man, le petit robot de bureau.
 **La v2.0 part du code de la v1 (commit 9a3b8cc)** : même logique de soins, sauvegarde, musique, voix et même scène Phaser.
 Ce qui change : le robot est maintenant une réplique 2D du **vrai** robot imprimé (`hardware/print-v1`), avec ses **3 écrans OLED**
 et une **tête qui bouge comme les vrais servos**, et on peut lui **parler** (cerveau démo, ou passerelle vers le PC de Pascal).
-La v1 est figée à part : https://passcool17.github.io/tamagotchi-elon-man-v1/.
+La v1 est figée à part : https://passcool17.github.io/tamagotchi-elon-man-v1/. La v2.0.1 aussi : https://passcool17.github.io/tamagotchi-elon-man-v2/.
 
 ## Choix du moteur
 **Phaser 3.90.0** (dernière version stable de la branche 3 ; la doc Context7 a été consultée avant de coder : config `scale` FIT,
@@ -62,16 +62,25 @@ calques DOM ou le re-rasteriser à chaque angle) alors que la tête, la plaque, 
 (écrasement en cos(pan), décalage de la plaque, rotation du roulis, longueur et angle des tiges). Avec Graphics, tout est dans le même
 canvas que le reste du jeu, net à toute échelle, sans fichier à charger. Corps et socle (immobiles) sont générés une fois en textures.
 
-Pièces (d'après `print-v1/previews` et le README print-v1) : socle noir avec les fentes de côté, corps rouge conique et 2 chevrons orange,
-moyeu + **plateau pan** noir (MG996R, ses trous défilent quand il tourne), **colonne et cardan**, **2 SG90 bleus** sur le plateau,
-**palonniers blancs** et **tiges de poussée** jusqu'aux rotules de la **plaque en X** sous la tête, tête rouge en dôme, plaque grise en D,
-3 cadres OLED noirs.
+**v2.1 (choix de Pascal, maquette 2, 26 nov. 2026) : formes EXACTES du projet elon-man d'origine** (`hardware/cad/elonman.scad`,
+`hardware/stl/apercu-all.png`), à 2,4 px/mm : tête rouge presque sphérique 110 × 95 × 90 (méplat de 4 mm sous le menton), fente caméra
+34 × 14 sur le dessus, trou de visage Ø62 avec lunette grise Ø74/Ø58, corps conique 120 → 100 × 180 (coins r = 10) avec 2 chevrons dorés
+(70 × 9, pointe 22) à 0,72 et 0,56 de la hauteur, socle noir 150 × 28 sans fentes, joug en U (disque Ø44) sur une colonne Ø26, 10 mm de cou.
+**Seul changement** : une plaque grise dans le trou du visage avec des découpes imprimables (`src/faceplate.js`, même géométrie que
+`docs/cutouts-face-plate.svg`) : 2 yeux en ellipse 18,5 × 7,8 mm et une bouche en sourire épais (trait 3,2 mm), chacun centré devant un
+OLED 128 × 64 à l'horizontale (zone active 21,74 × 10,86 mm). On ne voit les pixels qu'à travers les trous. Aucune forme « chibi » : le côté
+mignon vient des expressions, des couleurs et du mouvement.
+- Les yeux du firmware passent tels quels (les trous sont plus grands que les dessins).
+- La bouche est dessinée DANS la fente en sourire (`renderFace({ plate: true })`) : sourire plein, scintillement, mâchoire qui s'ouvre
+  depuis le centre, petite bouche triste, pointillés, bulles, Z qui respire, 3 points qui pensent, barres de parole. Aucun pixel allumé
+  hors de la fente, donc le même tampon peut aller au vrai SSD1306.
+- Rendu : les 3 tampons sont composés derrière la plaque percée dans un canvas (`rb-face`), puis posés sur la sphère.
 
 Mouvements (limites de `check_v1.py` : pan ±90°, hochement ±12°, roulis ±10°) :
-- **Pan** : toute la tête et le joug (servos, tiges) tournent. Faux 3D : la plaque se décale vers le côté et s'écrase en cos(angle) ;
-  à ±90° on voit le bord du visage. Le plateau pan montre ses trous qui défilent.
-- **Hochement** : les 2 tiges montent ou descendent ensemble, la plaque monte/descend.
-- **Roulis** : une tige monte, l'autre descend, la tête pivote autour du cardan.
+- **Pan** : le visage fait le tour de la sphère (décalage sin, écrasement cos) ; vers ±90° on voit l'arrière rouge de la tête.
+  Le joug en U et les vis du palonnier tournent. La fente caméra suit.
+- **Hochement** : le visage et la fente caméra montent ou descendent sur la sphère.
+- **Roulis** : toute la tête pivote autour du cou, la colonne suit.
 - Mixage du firmware (`elonman_body.ino`) : `gauche = nod + tilt`, `droite = nod − tilt`, affiché en direct à droite (`SERVOS`).
 - Palonniers dessinés avec un angle x2 pour que le mouvement se lise sur un téléphone (et que la tige garde à peu près sa longueur).
 - Mouvement servo : profil trapèze (accélération, vitesse max 260°/s pan, 90°/s tiges, freinage pour s'arrêter pile, jamais de dépassement).
@@ -79,7 +88,7 @@ Mouvements (limites de `check_v1.py` : pan ±90°, hochement ±12°, roulis ±10
 Réactions : Nourrir = la tête mâche (hochements), Jouer = pan ±70 + roulis, Nettoyer = roulis gauche-droite, Dormir = tête baissée à −12°,
 Réveil = s'étire vers le haut puis regarde autour, refus = petit « non », toucher = pan vers le doigt, parler = geste + petits hochements,
 regards au hasard (jusqu'à ±90° s'il s'ennuie). Au repos, la pose dépend de l'humeur (tête basse si triste ou fatigué).
-Proportions « chibi » : la tête et les écrans sont plus gros que dans le CAD pour que les pixels se voient sur un téléphone.
+Proportions : celles du CAD d'origine (aucune tête agrandie).
 
 ## Cerveau (`src/brain/`)
 - **Démo** (par défaut) : `demo.js`, règles par mots-clés en français québécois (salut, ça va, blague, faim, tourne la tête, dodo, jouer, qui es-tu,
@@ -141,9 +150,9 @@ Mise en page 720x1600 (ratio 9:20 comme le S20 FE).
 | Robot dessiné, visages OLED, icônes | faits par code pour ce jeu | MIT |
 
 ## Tests
-`npm test` : 68 tests Node : logique, stockage + migration v1 → v2, voix (14 répliques, délais, priorité), OLED (géométrie 128x64, toutes les humeurs,
+`npm test` : 74 tests Node : plaque de visage (découpes dans la zone active avec marge, parois imprimables, masque du sourire, bouche jamais allumée hors de la fente), logique, stockage + migration v1 → v2, voix (14 répliques, délais, priorité), OLED (géométrie 128x64, toutes les humeurs,
 clignement, export SSD1306 avec rotation), servos (bornes, vitesse, sans dépassement, mixage des tiges, tous les gestes), cerveau démo,
-passerelle (fetch simulé : succès, délai, erreur réseau, HTTP 500, JSON invalide, URL refusée), service worker (ne supprime jamais les caches de la v1).
+passerelle (fetch simulé : succès, délai, erreur réseau, HTTP 500, JSON invalide, URL refusée), service worker (ne supprime jamais les caches des prototypes v1 et v2).
 
 ## Limites connues
 - Pas de vrai test sur un S20 FE physique : vérifié en Chrome sans écran (émulation 412x915).

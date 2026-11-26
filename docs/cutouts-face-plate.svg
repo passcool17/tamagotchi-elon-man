@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Elon Man face-plate cutouts for mockup 2.
+  Units: millimetres.
+  Origin: centre of the original face hole (elonman.scad, Ø62 hole, gray bezel Ø74 / Ø58).
+  Axes in this file: +X right, +Y down (SVG). CAD +Z up = SVG −Y.
+
+  The 3 ELEGOO 0.96" SSD1306 stay rectangular (active area 21.74 × 10.86 mm, landscape)
+  and sit behind the plate. Only the cutout openings are visible.
+
+  Printable rules:
+  - simple closed paths (eyes) or a round-capped stroke that can be offset to a closed loop (mouth)
+  - no islands, no thin slivers
+  - each cutout fits inside its OLED active area with ≥ 1.5 mm margin
+  - minimum opening 3.2 mm (mouth stroke thickness)
+  - minimum plate wall between the two eye holes: 5.5 mm
+  - wall from mouth to each eye: > 8 mm
+  - for Impression 3D to adapt the bezel later
+
+  Eye L/R (CAD, origin face centre, +Z up):
+    centre (±12.0, +8.5), ellipse 18.5 × 7.8
+    AA centred on the same point, 21.74 × 10.86  → margin 1.62 × 1.53
+  Mouth (CAD +Z up):
+    thick quadratic smile, stroke 3.2, round caps
+    spine from (−7.0, −9.8) through (0, −12.2) to (7.0, −9.8)  (corners up, middle down)
+    overall bbox ≈ 17.2 × 4.4, AA centred at (0, −11.0)  → margin ≥ 2 mm
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-45 -45 90 90" width="180mm" height="180mm">
+  <title>Elon Man mockup 2 — face-plate cutouts (mm)</title>
+  <defs>
+    <style>
+      .plate { fill: #c8ccd1; stroke: #333; stroke-width: 0.25; }
+      .hole  { fill: #1a1c20; stroke: #111; stroke-width: 0.2; }
+      .smile { fill: none; stroke: #1a1c20; stroke-width: 3.2; stroke-linecap: round; }
+      .aa    { fill: none; stroke: #3a6ea5; stroke-width: 0.2; stroke-dasharray: 0.8 0.6; }
+      .dim   { fill: #333; font: 2.2px "IBM Plex Sans", "Helvetica Neue", sans-serif; }
+      .note  { fill: #333; font: 2px "IBM Plex Sans", "Helvetica Neue", sans-serif; }
+    </style>
+  </defs>
+
+  <circle class="plate" cx="0" cy="0" r="37"/>
+  <circle fill="none" stroke="#888" stroke-width="0.2" stroke-dasharray="1 0.7" cx="0" cy="0" r="31"/>
+
+  <rect class="aa" x="-22.87" y="-13.93" width="21.74" height="10.86"/>
+  <rect class="aa" x="1.13"  y="-13.93" width="21.74" height="10.86"/>
+  <rect class="aa" x="-10.87" y="5.57"  width="21.74" height="10.86"/>
+
+  <!-- cutouts: SVG Y is down, so CAD +Z becomes −Y -->
+  <ellipse class="hole" cx="-12" cy="-8.5" rx="9.25" ry="3.9"/>
+  <ellipse class="hole" cx="12"  cy="-8.5" rx="9.25" ry="3.9"/>
+  <!-- smile: spine in SVG y-down; CAD z = −y. Thickness 3.2, round caps. Offset to a closed loop for printing. -->
+  <path class="smile" d="M -7,9.8 Q 0,12.2 7,9.8"/>
+
+  <text class="dim" x="0" y="-39" text-anchor="middle">face plate Ø74 mm  ·  hole Ø62 mm (dashed)</text>
+  <text class="dim" x="-12" y="-16.5" text-anchor="middle">eye L</text>
+  <text class="dim" x="12"  y="-16.5" text-anchor="middle">eye R</text>
+  <text class="dim" x="0"   y="18.5"  text-anchor="middle">mouth (smile, 3.2 mm thick)</text>
+  <text class="note" x="0" y="32" text-anchor="middle">dashed blue = 21.74 × 10.86 mm OLED active area</text>
+  <text class="note" x="0" y="35.2" text-anchor="middle">ellipses 18.5 × 7.8  ·  smile stroke 3.2, bbox ≈ 17.2 × 4.4  ·  units mm</text>
+  <text class="note" x="0" y="38.4" text-anchor="middle">origin = face centre  ·  +X right  ·  SVG +Y down (= CAD −Z)</text>
+</svg>

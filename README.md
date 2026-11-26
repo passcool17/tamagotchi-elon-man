@@ -1,11 +1,19 @@
-# Tamagotchi Elon Man 2.0.1
+# Tamagotchi Elon Man 2.1
 
 Un petit jeu web où tu prends soin d'**Elon Man**, le robot de bureau du projet
 [elon-man](https://github.com/passcool17/elon-man) (MIT). Version web seulement, **aucun matériel requis**.
 Pensé d'abord pour téléphone (portrait, Samsung S20 FE), interface en français québécois.
 
-**Jouer (v2.0.1) :** https://passcool17.github.io/tamagotchi-elon-man/
-**Prototype v1 figé :** https://passcool17.github.io/tamagotchi-elon-man-v1/ (dépôt `passcool17/tamagotchi-elon-man-v1`)
+**Jouer (v2.1) :** https://passcool17.github.io/tamagotchi-elon-man/
+**Prototype v1 figé :** https://passcool17.github.io/tamagotchi-elon-man-v1/ (dépôt `passcool17/tamagotchi-elon-man-v1`)  
+**Prototype v2.0.1 figé :** https://passcool17.github.io/tamagotchi-elon-man-v2/ (dépôt `passcool17/tamagotchi-elon-man-v2`)
+
+## Quoi de neuf en 2.1
+- Le robot reprend **exactement les formes du projet elon-man d'origine** (`elonman.scad`) : tête presque sphérique, fente caméra,
+  lunette grise, corps conique à chevrons dorés, socle noir, joug en U.
+- **Plaque de visage à découpes** (choix de Pascal) : yeux en ellipse et bouche en sourire, les 3 OLED 128x64 derrière.
+  Contours imprimables en mm : `docs/cutouts-face-plate.svg` (pour Impression 3D).
+- La tête tourne (pan ±90), hoche (±12) et roule (±10) comme avant ; soins, sauvegarde, musique, voix et cerveau inchangés.
 
 ## Quoi de neuf en 2.0
 
@@ -40,12 +48,13 @@ Pas de build : modules ES ; Phaser 3.90 et Motion 14 sont fournis dans `vendor/`
 index.html               page, polices locales, styles du panneau « Parler »
 src/logic.js             ÉTAT PUR : stats, déclin, actions, humeur, rattrapage hors ligne (inchangé depuis la v1)
 src/oled.js              VISAGE PUR : 3 framebuffers 1 bit 128x64 (yeux + bouche, tous à l'horizontale) + export SSD1306
+src/faceplate.js         PLAQUE PURE : découpes yeux/bouche en mm (= docs/cutouts-face-plate.svg) + masques 128x64
 src/servo.js             TÊTE PURE : modèle servo pan/hochement/roulis, mixage des tiges, gestes
 src/brain/demo.js        CERVEAU DÉMO PUR : réponses scriptées (québécois)
 src/brain/gateway.js     passerelle PC : fetch + délai + validation + retour démo
 src/storage.js           localStorage (clés v2 + migration v1)
 src/audio.js, voice.js   musique en boucle, bips, 14 voix (inchangés)
-src/ui/robot.js          dessin vectoriel du robot réel + mécanisme du cou
+src/ui/robot.js          robot d'après elonman.scad + plaque percée + joug en U
 src/ui/chat.js           panneau « Parler » (DOM, animé avec Motion)
 src/scenes/GameScene.js  colle tout dans Phaser
 tests/                   node --test
