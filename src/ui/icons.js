@@ -7,6 +7,20 @@ const PAL = {
 };
 
 const BITMAPS = {
+  talk: [
+    '............',
+    '.wwwwwwwwww.',
+    'wwwwwwwwwwww',
+    'wwWWwwWWwwWw',
+    'wwWWwwWWwwWw',
+    'wwwwwwwwwwww',
+    '.wwwwwwwwww.',
+    '...www......',
+    '..ww........',
+    '.w..........',
+    '............',
+    '............',
+  ],
   food: [
     '...tttttt...',
     '.tttttttttt.',

@@ -1,158 +1,202 @@
-// robot.js — draws Elon Man with code (no image files) and animates the head turn.
-// Shapes follow hardware/cad/elonman.scad of passcool17/elon-man (MIT): red tapered body (wider at the
-// shoulders), black base, two gold chest chevrons, red ellipsoid head, round gray face bezel, camera slot on top.
-// Proportions are "chibi": the head is bigger than in the CAD so the face stays readable on a phone.
+// robot.js — flat 2D replica of the REAL Elon Man (passcool17/elon-man, hardware/print-v1, MIT).
+// Front view, drawn with Phaser vector Graphics every frame (see GAME.md for why not SVG):
+//   black base · red tapered body + 2 orange chevrons · black pan plate (MG996R) · central column + cardan
+//   · 2 blue SG90 with horns and push rods · black X plate under the head · red dome head
+//   · grey face plate · 3 black OLED frames (2 eyes on their side + mouth), each a live 128×64 texture.
+// Only the head and the neck mechanism move. The base and the body never move.
+import { EYE_W, EYE_H, PANEL_W, PANEL_H } from '../oled.js';
 
 export const ROBOT = {
   cx: 360,
-  headY: 585,
-  neckY: 748,
-  bodyTop: 760, bodyH: 320,
-  bodyWTop: 310, bodyWBottom: 258,
-  baseY: 1100,
-  bezelDy: 14,
+  pivotY: 758,          // cardan (nod/tilt centre), top of the central column
+  headBottom: -18,      // head local y of the flat bottom (relative to the pivot)
+  rx: 258, ry: 352,     // dome half-width / height
+  plate: { rx: 232, ry: 328, bottom: -32 },
+  oled: 1.1,            // game px per OLED pixel
+  eyeX: 60, eyeCY: -252, mouthCY: -102,
+  discY: 846, bodyTop: 872, bodyH: 246, bodyWTop: 300, bodyWBottom: 262, baseY: 1140,
+  servoX: 80, hornY: 790, hornLen: 34,
+  grid: 3,              // texture pixels per OLED pixel (gives the visible pixel matrix)
 };
 
-const RED = { dark: 0x6e0000, mid: 0xb80000, base: 0xd10a0a, light: 0xf01c14, hi: 0xff6a55 };
-const GOLD = { base: 0xf2b01e, dark: 0x9a6a00, hi: 0xffe08a };
+export const COLORS = {
+  red: 0xc0291f, redShade: 0x8f1b14, redLight: 0xe0483a, redRim: 0x9e2018,
+  plate: 0x8b9097, plateLight: 0xa5aab1, plateShade: 0x6d7279,
+  black: 0x111214, blackHi: 0x26282d, blackLo: 0x060708,
+  servo: 0x2f64a3, servoLight: 0x4a83c6, horn: 0xe9edf2, rod: 0x9aa3ad,
+  chevron: 0xe58a1f, chevronShade: 0xa85f0f,
+};
 
 function gfx(scene) { return scene.make.graphics({ x: 0, y: 0, add: false }); }
 
 export function buildRobotTextures(scene) {
-  // ---- head: ellipsoid with fake gradient (stacked ellipses shifted toward the light) ----
-  {
-    const W = 420, H = 380, g = gfx(scene);
-    const cx = W / 2, cy = H / 2 + 6;
-    g.fillStyle(0x000000, 0.28); g.fillEllipse(cx + 6, cy + 12, 384, 330);
-    g.fillStyle(RED.dark, 1); g.fillEllipse(cx, cy, 384, 330);
-    const steps = 14;
-    for (let i = 1; i <= steps; i++) {
-      const k = i / steps;
-      const col = Phaser.Display.Color.Interpolate.ColorWithColor(
-        Phaser.Display.Color.ValueToColor(RED.mid), Phaser.Display.Color.ValueToColor(RED.light), steps, i);
-      g.fillStyle(Phaser.Display.Color.GetColor(col.r, col.g, col.b), 1);
-      g.fillEllipse(cx - 14 * k - 4, cy - 14 * k - 6, 384 - 90 * k, 330 - 78 * k);
-    }
-    g.fillStyle(RED.hi, 0.35); g.fillEllipse(cx - 92, cy - 96, 90, 44);
-    g.generateTexture('rb-head', W, H);
-    g.destroy();
-  }
-  // ---- bezel: gray ring + dark glass ----
-  {
-    const S = 300, c = S / 2, g = gfx(scene);
-    g.fillStyle(0x000000, 0.35); g.fillCircle(c + 3, c + 5, 142);
-    g.fillStyle(0x5d6068, 1); g.fillCircle(c, c, 142);
-    g.fillStyle(0x9ea2ab, 1); g.fillCircle(c - 2, c - 3, 138);
-    g.fillStyle(0x7b7f88, 1); g.fillCircle(c, c, 130);
-    g.fillStyle(0x15171c, 1); g.fillCircle(c, c, 124);
-    g.fillStyle(0xffffff, 0.12); g.beginPath(); g.arc(c, c, 136, Math.PI * 1.05, Math.PI * 1.5); g.strokePath();
-    g.lineStyle(5, 0xd8dbe2, 0.55); g.beginPath(); g.arc(c, c, 134, Math.PI * 1.08, Math.PI * 1.45); g.strokePath();
-    g.generateTexture('rb-bezel', S, S);
-    g.destroy();
-  }
-  // ---- camera slot (on the top of the head) ----
-  {
-    const g = gfx(scene);
-    g.fillStyle(0x3a0000, 1); g.fillRoundedRect(0, 0, 112, 22, 8);
-    g.fillStyle(0x120000, 1); g.fillRoundedRect(4, 4, 104, 14, 6);
-    g.fillStyle(0x2a9dff, 1); g.fillCircle(56, 11, 4);
-    g.fillStyle(0xffffff, 0.8); g.fillCircle(55, 9.5, 1.4);
-    g.generateTexture('rb-cam', 112, 22);
-    g.destroy();
-  }
-  // ---- body: tapered, gold chevrons ----
+  // ---- body: flat tapered block, one shade band, two orange chevrons (V pointing down) ----
   {
     const { bodyH: H, bodyWTop: wt, bodyWBottom: wb } = ROBOT;
     const W = wt + 40, ox = 20, g = gfx(scene);
-    const trap = (inset = 0, yTop = 0, yBot = H) => {
-      const wAt = (y) => wt + (wb - wt) * (y / H);
-      return [
-        { x: ox + (wt - wAt(yTop)) / 2 + inset, y: yTop }, { x: ox + (wt + wAt(yTop)) / 2 - inset, y: yTop },
-        { x: ox + (wt + wAt(yBot)) / 2 - inset, y: yBot }, { x: ox + (wt - wAt(yBot)) / 2 + inset, y: yBot },
-      ];
-    };
-    g.fillStyle(0x000000, 0.3); g.fillPoints(trap(-6).map((p) => ({ x: p.x + 8, y: p.y + 8 })), true);
-    g.fillStyle(RED.base, 1); g.fillPoints(trap(), true);
-    // left highlight / right shade (light from the left, like the render)
-    // right dark band (follows the taper)
-    g.fillStyle(0x000000, 0.34);
-    g.fillPoints([
-      { x: ox + wt * 0.72, y: 0 }, { x: ox + wt, y: 0 },
-      { x: ox + wt - (wt - wb) / 2, y: H }, { x: ox + (wt - (wt - wb) / 2) - (wb * 0.28), y: H },
-    ], true);
-    g.fillStyle(0xffffff, 0.10);
-    g.fillPoints([
-      { x: ox, y: 0 }, { x: ox + wt * 0.16, y: 0 },
-      { x: ox + (wt - wb) / 2 + wb * 0.16, y: H }, { x: ox + (wt - wb) / 2, y: H },
-    ], true);
-    // shoulder bevel
-    g.fillStyle(RED.hi, 0.55); g.fillRect(ox + 8, 0, wt - 16, 7);
-    g.fillStyle(RED.light, 1); g.fillRect(ox + 4, 7, wt - 8, 11);
-    // chevrons (V pointing down), channel then gold inlay
-    const chevron = (cy, w, th, drop, fill, dx = 0) => {
-      const cx = W / 2 + dx;
+    const xl = (y) => ox + (wt - (wt + (wb - wt) * (y / H))) / 2;
+    const xr = (y) => ox + wt - (wt - (wt + (wb - wt) * (y / H))) / 2;
+    g.fillStyle(0x000000, 0.28); g.fillPoints([{ x: xl(0) + 10, y: 8 }, { x: xr(0) + 10, y: 8 }, { x: xr(H) + 10, y: H + 6 }, { x: xl(H) + 10, y: H + 6 }], true);
+    g.fillStyle(COLORS.red, 1); g.fillPoints([{ x: xl(0), y: 0 }, { x: xr(0), y: 0 }, { x: xr(H), y: H }, { x: xl(H), y: H }], true);
+    g.fillStyle(COLORS.redShade, 1); g.fillPoints([{ x: xr(0) - 34, y: 0 }, { x: xr(0), y: 0 }, { x: xr(H), y: H }, { x: xr(H) - 30, y: H }], true);
+    g.fillStyle(COLORS.redLight, 1); g.fillPoints([{ x: xl(0), y: 0 }, { x: xl(0) + 14, y: 0 }, { x: xl(H) + 12, y: H }, { x: xl(H), y: H }], true);
+    g.fillStyle(COLORS.redRim, 1); g.fillRect(xl(0), 0, wt, 8);
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(W / 2, 4, 120, 10); // hole for the neck hub
+    const chevron = (cy, w, th, drop, fill) => {
+      const cx = W / 2;
       g.fillStyle(fill, 1);
-      g.fillPoints([
-        { x: cx - w / 2, y: cy }, { x: cx, y: cy + drop }, { x: cx + w / 2, y: cy },
-        { x: cx + w / 2, y: cy + th }, { x: cx, y: cy + drop + th }, { x: cx - w / 2, y: cy + th },
-      ], true);
+      g.fillPoints([{ x: cx - w / 2, y: cy }, { x: cx, y: cy + drop }, { x: cx + w / 2, y: cy },
+        { x: cx + w / 2, y: cy + th }, { x: cx, y: cy + drop + th }, { x: cx - w / 2, y: cy + th }], true);
     };
-    for (const cy of [74, 148]) {
-      chevron(cy - 4, 178, 34, 46, 0x4a0000);
-      chevron(cy, 164, 24, 42, GOLD.dark);
-      chevron(cy - 2, 164, 22, 40, GOLD.base);
-    }
-    g.generateTexture('rb-body', W, H);
+    for (const cy of [62, 116]) { chevron(cy + 3, 150, 18, 36, COLORS.chevronShade); chevron(cy, 150, 16, 36, COLORS.chevron); }
+    g.generateTexture('rb-body', W, H + 10);
     g.destroy();
   }
-  // ---- neck ----
+  // ---- base: black plate with the side vents of apercu-cote.png ----
   {
     const g = gfx(scene);
-    g.fillStyle(0x16181d, 1); g.fillRoundedRect(0, 0, 96, 60, 10);
-    g.fillStyle(0x2c2f37, 1); g.fillRect(8, 0, 80, 10);
-    g.fillStyle(0xffffff, 0.08); g.fillRect(10, 12, 14, 44);
-    g.generateTexture('rb-neck', 96, 60);
-    g.destroy();
-  }
-  // ---- base: black plate ----
-  {
-    const g = gfx(scene);
-    g.fillStyle(0x000000, 0.35); g.fillRoundedRect(8, 14, 424, 70, 22);
-    g.fillStyle(0x0b0b0e, 1); g.fillRoundedRect(0, 0, 424, 66, 22);
-    g.fillStyle(0x23252c, 1); g.fillRoundedRect(0, 0, 424, 22, { tl: 22, tr: 22, bl: 4, br: 4 });
-    g.fillStyle(0xffffff, 0.12); g.fillRect(22, 3, 380, 3);
-    g.generateTexture('rb-base', 432, 86);
+    g.fillStyle(0x000000, 0.35); g.fillRoundedRect(8, 14, 400, 66, 18);
+    g.fillStyle(COLORS.black, 1); g.fillRoundedRect(0, 0, 400, 62, 18);
+    g.fillStyle(COLORS.blackHi, 1); g.fillRoundedRect(0, 0, 400, 16, { tl: 18, tr: 18, bl: 2, br: 2 });
+    for (let i = 0; i < 6; i++) { g.fillStyle(i < 2 ? 0x8a9099 : 0x2f64a3, 1); g.fillRoundedRect(150 + i * 18, 28, 7, 22, 3); }
+    g.generateTexture('rb-base', 408, 82);
     g.destroy();
   }
 }
 
-// The animated robot. `turn` in [-1, 1]: head orientation (-1 = looks to the screen's left).
+// Create the 3 OLED canvas textures. Returns { eyeL, eyeR, mouth } each { tex, ctx, img } (img = ImageData).
+export function createOledTextures(scene) {
+  const G = ROBOT.grid;
+  const mk = (key, w, h) => {
+    const tex = scene.textures.createCanvas(key, w * G, h * G);
+    tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    const ctx = tex.getContext();
+    return { tex, ctx, img: ctx.createImageData(w * G, h * G) };
+  };
+  return { eyeL: mk('oled-eyeL', EYE_W, EYE_H), eyeR: mk('oled-eyeR', EYE_W, EYE_H), mouth: mk('oled-mouth', PANEL_W, PANEL_H) };
+}
+
+const D2R = Math.PI / 180;
+
+// The animated robot. Call robot.update(pose) with pose = { pan, nod, tilt } in degrees.
 export function createRobot(scene) {
-  const { cx } = ROBOT;
-  const robot = { turn: 0, bob: 0, nod: 0, hop: 0 };
+  const R = ROBOT, cx = R.cx;
+  const robot = { pose: { pan: 0, nod: 0, tilt: 0 }, hop: 0 };
 
-  const shadow = scene.add.ellipse(cx, ROBOT.baseY + 40, 460, 44, 0x000000, 0.35).setDepth(1);
-  const base = scene.add.image(cx, ROBOT.baseY, 'rb-base').setOrigin(0.5, 0.5).setDepth(2);
-  const body = scene.add.image(cx, ROBOT.bodyTop + ROBOT.bodyH / 2 + 0, 'rb-body').setDepth(3);
-  const neck = scene.add.image(cx, ROBOT.neckY, 'rb-neck').setDepth(4);
-  const head = scene.add.image(cx, ROBOT.headY, 'rb-head').setDepth(5);
-  const bezel = scene.add.image(cx, ROBOT.headY + ROBOT.bezelDy, 'rb-bezel').setDepth(6);
-  const faceImg = scene.add.image(cx, ROBOT.headY + ROBOT.bezelDy, 'face').setDepth(7);
-  const cam = scene.add.image(cx, ROBOT.headY - 150, 'rb-cam').setDepth(6);
+  scene.add.ellipse(cx, R.baseY + 34, 440, 40, 0x000000, 0.4).setDepth(1);
+  scene.add.image(cx, R.baseY, 'rb-base').setDepth(2);
+  scene.add.image(cx, R.bodyTop + (R.bodyH + 10) / 2, 'rb-body').setDepth(3);
+  const neck = scene.add.graphics().setDepth(4);
+  const head = scene.add.container(cx, R.pivotY).setDepth(5);
+  const shell = scene.add.graphics();
+  const G = R.grid;
+  const eyeL = scene.add.image(0, 0, 'oled-eyeL');
+  const eyeR = scene.add.image(0, 0, 'oled-eyeR');
+  const mouth = scene.add.image(0, 0, 'oled-mouth');
+  const glare = scene.add.graphics();
+  head.add([shell, eyeL, eyeR, mouth, glare]);
+  robot.parts = { neck, head, shell, eyeL, eyeR, mouth };
 
-  robot.parts = { shadow, base, body, neck, head, bezel, faceImg, cam };
+  // face-plate horizontal shift for a pan angle: the flat face slides toward the turn and narrows (cos),
+  // but never leaves the dome silhouette.
+  const plateShift = (s, c) => Math.sign(s) * Math.min(Math.abs(s) * R.rx * 0.62, Math.max(0, R.rx - 10 - R.plate.rx * c));
 
-  robot.update = () => {
-    const t = robot.turn;
-    const a = Math.abs(t);
-    const y = ROBOT.headY + robot.bob + robot.hop + robot.nod * 0.3;
-    head.setPosition(cx + t * 20, y).setScale(1 - 0.05 * a, 1).setAngle(t * 2.5 + robot.nod * 0.12);
-    const fx = cx + t * 52, fy = y + ROBOT.bezelDy;
-    bezel.setPosition(fx, fy).setScale(1 - 0.16 * a, 1).setAngle(t * 2.5);
-    faceImg.setPosition(fx, fy).setScale(1 - 0.16 * a, 1).setAngle(t * 2.5);
-    cam.setPosition(cx + t * 34, y - 150 + a * 3).setScale(1 - 0.12 * a, 1);
-    neck.setScale(1, 1);
-    shadow.setScale(1 - robot.hop / 600, 1);
+  robot.update = (pose = robot.pose) => {
+    robot.pose = pose;
+    const pan = pose.pan * D2R, c = Math.max(0.02, Math.cos(pan)), s = Math.sin(pan);
+    const nod = pose.nod, tilt = pose.tilt;
+    const hop = robot.hop;
+
+    // ---------- head (container rotates for tilt around the cardan) ----------
+    head.setPosition(cx, R.pivotY + hop).setAngle(tilt);
+    const g = shell; g.clear();
+    const hb = R.headBottom - nod * 0.5;
+    // X plate under the head (black, 2 arms to the rod ball joints), turns with pan
+    const armX = R.servoX * c + 14 * Math.abs(c);
+    g.fillStyle(COLORS.black, 1); g.fillRoundedRect(-armX - 12, hb - 2, (armX + 12) * 2, 14, 7);
+    g.fillStyle(COLORS.blackHi, 1); g.fillCircle(-R.servoX * c, hb + 5 - nod * 1.2 + nod * 0.5, 6); g.fillCircle(R.servoX * c, hb + 5 - nod * 1.2 + nod * 0.5, 6);
+    // dome: half ellipse with flat bottom
+    const dome = (rx, ry, y0, col, dx = 0) => {
+      g.fillStyle(col, 1); g.beginPath(); g.moveTo(-rx + dx, y0);
+      for (let i = 0; i <= 40; i++) { const a = Math.PI + (Math.PI * i) / 40; g.lineTo(dx + Math.cos(a) * rx, y0 + Math.sin(a) * ry); }
+      g.closePath(); g.fillPath();
+    };
+    dome(R.rx + 4, R.ry + 4, hb + 2, 0x000000);           // outline
+    dome(R.rx, R.ry, hb, COLORS.redShade);
+    dome(R.rx - 16, R.ry - 10, hb, COLORS.red, -10 - s * 8); // lit side (light from the upper left)
+    g.fillStyle(COLORS.redLight, 0.55); g.fillEllipse(-110 - s * 30, hb - R.ry * 0.72, 90, 46);
+    // face plate (grey, flat D shape), squeezed by cos(pan), lowered/raised by nod
+    const sx = plateShift(s, c);
+    const py = R.plate.bottom - nod * 2.2, prx = R.plate.rx * c, pry = R.plate.ry * (1 - Math.abs(nod) * 0.006);
+    const plateD = (rx, ry, y0, col, dx) => {
+      g.fillStyle(col, 1); g.beginPath(); g.moveTo(dx - rx, y0);
+      for (let i = 0; i <= 40; i++) { const a = Math.PI + (Math.PI * i) / 40; g.lineTo(dx + Math.cos(a) * rx, y0 + Math.sin(a) * ry); }
+      g.closePath(); g.fillPath();
+    };
+    // plate thickness sliver on the side that turns away
+    plateD(prx + 8, pry + 6, py + 4, COLORS.redRim, sx + s * 10);
+    plateD(prx, pry, py, COLORS.plateShade, sx);
+    plateD(prx - 6, pry - 6, py - 2, COLORS.plate, sx - 2 * c);
+    g.fillStyle(COLORS.plateLight, 0.7); g.fillRect(sx - prx + 10, py - 8, prx * 2 - 20, 4);
+
+    // OLED frames (black PETG "cadre-oled") + live screens
+    const O = R.oled;
+    const frame = (fx, fy, w, h) => {
+      g.fillStyle(COLORS.blackLo, 1); g.fillRoundedRect(fx - (w / 2 + 7) * c, fy - h / 2 - 7, (w + 14) * c, h + 14, 5 * c + 1);
+      g.fillStyle(COLORS.blackHi, 1); g.fillRect(fx - (w / 2 + 5) * c, fy - h / 2 - 7, (w + 10) * c, 3);
+      g.fillStyle(0x020304, 1); g.fillRect(fx - (w / 2 + 3) * c, fy - h / 2 - 3, (w + 6) * c, h + 6);
+    };
+    const ey = py + (R.eyeCY - R.plate.bottom), my = py + (R.mouthCY - R.plate.bottom);
+    const exL = sx - R.eyeX * c, exR = sx + R.eyeX * c;
+    frame(exL, ey, EYE_W * O, EYE_H * O);
+    frame(exR, ey, EYE_W * O, EYE_H * O);
+    frame(sx, my, PANEL_W * O, PANEL_H * O);
+    const k = O / G;
+    eyeL.setPosition(exL, ey).setScale(k * c, k);
+    eyeR.setPosition(exR, ey).setScale(k * c, k);
+    mouth.setPosition(sx, my).setScale(k * c, k);
+    glare.clear();
+    glare.fillStyle(0xffffff, 0.05);
+    glare.fillRect(exL - EYE_W * O * c * 0.5, ey - EYE_H * O * 0.5, EYE_W * O * c * 0.35, EYE_H * O);
+    glare.fillRect(exR - EYE_W * O * c * 0.5, ey - EYE_H * O * 0.5, EYE_W * O * c * 0.35, EYE_H * O);
+
+    // ---------- neck mechanism (world space; the yoke turns with pan, the base never moves) ----------
+    const n = neck; n.clear();
+    const py0 = R.pivotY + hop;
+    // body hub + bearing
+    n.fillStyle(COLORS.black, 1); n.fillRoundedRect(cx - 40, R.discY + 8, 80, R.bodyTop - R.discY - 4, 6);
+    // pan plate (MG996R output) — holes slide with pan so the rotation reads
+    n.fillStyle(COLORS.black, 1); n.fillRoundedRect(cx - 130, R.discY - 8, 260, 18, 9);
+    n.fillStyle(COLORS.blackHi, 1); n.fillRect(cx - 122, R.discY - 8, 244, 4);
+    for (let i = 0; i < 6; i++) {
+      const a = pan + (i * Math.PI) / 3, x = Math.sin(a), z = Math.cos(a);
+      if (z > 0) { n.fillStyle(0x3a3d44, 1); n.fillEllipse(cx + x * 112, R.discY + 2, 10 * z + 2, 6); }
+    }
+    // central column up to the cardan
+    n.fillStyle(COLORS.black, 1); n.fillRect(cx - 18, py0 + 4, 36, R.discY - py0 - 8);
+    n.fillStyle(COLORS.blackHi, 1); n.fillRect(cx - 14, py0 + 4, 7, R.discY - py0 - 8);
+    n.fillStyle(COLORS.black, 1); n.fillRoundedRect(cx - 28, py0 - 4, 56, 22, 5); // cardan block
+    // 2 SG90 (blue) on the pan plate, horns + push rods to the X plate
+    const rodsDeg = { left: nod + tilt, right: nod - tilt };
+    const tiltR = tilt * D2R;
+    const toWorld = (lx, ly) => ({ x: cx + lx * Math.cos(tiltR) - ly * Math.sin(tiltR), y: py0 + lx * Math.sin(tiltR) + ly * Math.cos(tiltR) });
+    for (const side of [-1, 1]) {
+      const deg = side < 0 ? rodsDeg.left : rodsDeg.right;
+      const x = cx + side * R.servoX * c;
+      const sw = 22 + 18 * Math.abs(c);   // a servo seen more from the side when the yoke turns
+      n.fillStyle(COLORS.servo, 1); n.fillRoundedRect(x - sw / 2, R.hornY, sw, R.discY - 8 - R.hornY, 4);
+      n.fillStyle(COLORS.servoLight, 1); n.fillRect(x - sw / 2 + 3, R.hornY + 4, 5, R.discY - 16 - R.hornY);
+      n.fillStyle(COLORS.servo, 1); n.fillRect(x - sw / 2 - 6 * Math.abs(c), R.hornY + 16, sw + 12 * Math.abs(c), 6); // mounting ears
+      // horn: drawn angle = 2× servo angle (readable on a phone; GAME.md)
+      const a = deg * 2 * D2R;
+      const hx = x + side * Math.cos(a) * R.hornLen * Math.max(0.35, Math.abs(c)), hy = R.hornY - Math.sin(a) * R.hornLen;
+      n.lineStyle(9, COLORS.horn, 1); n.lineBetween(x, R.hornY, hx, hy);
+      n.fillStyle(COLORS.horn, 1); n.fillCircle(x, R.hornY, 8);
+      // rod top: ball joint under the X plate (head space -> world)
+      const top = toWorld(side * R.servoX * c, R.headBottom + 5 - nod * 1.2);
+      n.lineStyle(5, COLORS.rod, 1); n.lineBetween(hx, hy, top.x, top.y);
+      n.fillStyle(0x5d6670, 1); n.fillCircle(hx, hy, 5); n.fillCircle(top.x, top.y, 5);
+    }
   };
   robot.update();
   return robot;

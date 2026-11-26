@@ -47,3 +47,43 @@ test('prefs default to voice on and persist a voice-off flag', () => {
   assert.equal(loadPrefs(st).voice, false);
   assert.equal(loadPrefs(st).muted, false);
 });
+
+// ---- v2.0 migration ----
+import { LEGACY_SAVE_KEY, LEGACY_PREFS_KEY, PREFS_KEY } from '../src/storage.js';
+import { serialize } from '../src/logic.js';
+
+test('v2 migrates the v1 pet (tem.save.v1 -> tem.save.v2) and keeps the old key', () => {
+  const st = fake();
+  const v1pet = act(act(createState(T0), 'feed', T0).state, 'play', T0).state;
+  st.setItem(LEGACY_SAVE_KEY, serialize(v1pet));
+  const info = {};
+  const s = loadPet(st, T0, info);
+  assert.equal(info.migrated, true);
+  assert.equal(s.cares, 2);
+  assert.equal(s.born, v1pet.born);
+  assert.ok(st.getItem(SAVE_KEY), 'written to the v2 key');
+  assert.ok(st.getItem(LEGACY_SAVE_KEY), 'v1 key kept');
+  const again = {};
+  loadPet(st, T0, again);
+  assert.equal(again.migrated, false, 'second load reads v2');
+});
+
+test('v2 key wins over the v1 key', () => {
+  const st = fake();
+  st.setItem(LEGACY_SAVE_KEY, serialize(createState(T0)));
+  savePet(st, act(createState(T0), 'play', T0).state);
+  assert.equal(loadPet(st, T0).cares, 1);
+});
+
+test('v1 prefs migrate and get a demo brain by default', () => {
+  const st = fake();
+  st.setItem(LEGACY_PREFS_KEY, JSON.stringify({ muted: true, voice: false }));
+  const p = loadPrefs(st);
+  assert.equal(p.muted, true);
+  assert.equal(p.voice, false);
+  assert.deepEqual(p.brain, { mode: 'demo', url: '' });
+  savePrefs(st, { ...p, brain: { mode: 'gateway', url: 'https://x.example' } });
+  assert.equal(loadPrefs(st).brain.mode, 'gateway');
+  st.setItem(PREFS_KEY, JSON.stringify({ brain: { mode: 'weird', url: 5 } }));
+  assert.deepEqual(loadPrefs(st).brain, { mode: 'demo', url: '' });
+});

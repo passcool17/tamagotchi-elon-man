@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#10121a">
+  <meta name="theme-color" content="#07090c">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Tamagotchi Elon Man</title>
-  <meta name="description" content="Prends soin d'Elon Man, le petit robot de bureau. Un jeu PC17.">
+  <title>Tamagotchi Elon Man 2.0</title>
+  <meta name="description" content="Prends soin d'Elon Man, le petit robot de bureau : 3 écrans OLED, une tête qui bouge comme les vrais servos, et un cerveau démo ou branché sur le PC. Un jeu PC17.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/icon-192.png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
@@ -16,14 +16,53 @@
   <style>
     @font-face { font-family: "Press Start 2P"; src: url(fonts/PressStart2P.woff2) format("woff2"); font-display: swap; }
     @font-face { font-family: "Rubik"; src: url(fonts/Rubik-var.woff2) format("woff2"); font-weight: 500 700; font-display: swap; }
-    html, body { margin: 0; height: 100%; background: #10121a; overflow: hidden; overscroll-behavior: none; }
+    @font-face { font-family: "Chakra Petch"; src: url(fonts/ChakraPetch-700.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+    @font-face { font-family: "JetBrains Mono"; src: url(fonts/JetBrainsMono-500.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+    html, body { margin: 0; height: 100%; background: #07090c; overflow: hidden; overscroll-behavior: none; }
     body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
     #safe { position: fixed; inset: 0; box-sizing: border-box;
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
     #game { width: 100%; height: 100%; }
     #game canvas { display: block; }
     #boot { position: fixed; inset: 0; display: grid; place-items: center; color: #f2b01e;
-      font: 16px "Press Start 2P", monospace; background: #10121a; z-index: 5; }
+      font: 16px "Press Start 2P", monospace; background: #07090c; z-index: 5; }
+    /* chat sheet — palette and type from La mallette de l'Entité */
+    #chat { --bg:#060708; --shell:#111214; --hi:#1b1c1f; --ink:#e8edf1; --dim:#7d858d; --cyan:#62d6ff; --green:#36f08a; --amber:#ffb020;
+      position: fixed; inset: 0; z-index: 50; font: 500 16px Rubik, system-ui, sans-serif; color: var(--ink);
+      -webkit-user-select: text; user-select: text; touch-action: manipulation; }
+    #chat[hidden] { display: none; }
+    .chat-scrim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+    .chat-card { position: absolute; left: 0; right: 0; bottom: 0; max-height: 82vh; overflow: auto; box-sizing: border-box;
+      padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); background: var(--shell);
+      border-top: 1px solid #2a3038; border-radius: 16px 16px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.6); }
+    .chat-head { display: flex; align-items: center; gap: 10px; }
+    .chat-head h2 { margin: 0; flex: 1; font: 700 20px "Chakra Petch", Rubik, sans-serif; letter-spacing: .02em; }
+    .chat-mode { font: 500 13px "JetBrains Mono", monospace; color: var(--cyan); border: 1px solid currentColor; border-radius: 6px; padding: 3px 7px; }
+    .chat-mode[data-kind=gateway] { color: var(--green); } .chat-mode[data-kind=fallback] { color: var(--amber); }
+    .chat-x { width: 48px; height: 48px; border: 0; border-radius: 10px; background: var(--hi); color: var(--ink); font-size: 20px; }
+    .chat-log { list-style: none; margin: 12px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 30vh; overflow: auto; }
+    .chat-log:empty { display: none; }
+    .chat-log li { max-width: 85%; padding: 9px 12px; border-radius: 12px; line-height: 1.35; }
+    .chat-log li.me { align-self: flex-end; background: #1d3a49; }
+    .chat-log li.bot { align-self: flex-start; background: var(--hi); border: 1px solid #2a3038; }
+    .chat-log small { display: block; margin-top: 4px; font: 500 11px "JetBrains Mono", monospace; color: var(--dim); }
+    .chat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .chip { min-height: 48px; padding: 0 14px; border-radius: 24px; border: 1px solid #2a6f8f; background: #0d1a22; color: var(--ink); font: inherit; }
+    .chip:active, .chat-ask button:active { transform: translateY(1px); filter: brightness(1.2); }
+    .chat-ask { display: flex; gap: 8px; }
+    .chat-ask input, .set-url input { flex: 1; min-width: 0; min-height: 48px; box-sizing: border-box; padding: 0 12px; border-radius: 10px;
+      border: 1px solid #2a3038; background: var(--bg); color: var(--ink); font: inherit; font-size: 16px; }
+    .chat-ask button, .set-test { min-height: 48px; min-width: 48px; padding: 0 16px; border: 0; border-radius: 10px;
+      background: linear-gradient(#7fe0ff, #3fb8e6); color: #04121a; font: 700 16px "Chakra Petch", Rubik, sans-serif; }
+    .chat-set { margin-top: 14px; border-top: 1px solid #2a3038; padding-top: 6px; }
+    .chat-set summary { min-height: 48px; display: flex; align-items: center; font: 700 16px "Chakra Petch", sans-serif; color: var(--dim); cursor: pointer; }
+    .set-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 8px 0; }
+    .set-row label { min-height: 48px; display: flex; align-items: center; gap: 8px; }
+    .set-row input[type=radio] { width: 22px; height: 22px; accent-color: #62d6ff; }
+    .set-url { display: flex; flex-direction: column; gap: 6px; color: var(--dim); font-size: 14px; }
+    .set-status { font: 500 13px "JetBrains Mono", monospace; color: var(--dim); }
+    .set-note { color: var(--dim); font-size: 13px; line-height: 1.4; }
+    @media (prefers-reduced-motion: reduce) { .chat-card { transition: none; } }
   </style>
 </head>
 <body>
@@ -31,6 +70,7 @@
   <div id="boot">Chargement…</div>
   <noscript><p style="color:#fff;font:16px sans-serif;padding:24px">Ce jeu a besoin de JavaScript.</p></noscript>
   <script src="vendor/phaser.min.js"></script>
+  <script src="vendor/motion.js"></script>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

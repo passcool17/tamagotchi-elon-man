@@ -11,6 +11,8 @@ async function fontsReady() {
         document.fonts.load('30px "Press Start 2P"'),
         document.fonts.load('600 28px Rubik'),
         document.fonts.load('500 24px Rubik'),
+        document.fonts.load('500 20px "JetBrains Mono"'),
+        document.fonts.load('700 20px "Chakra Petch"'),
       ]),
       new Promise((r) => setTimeout(r, 2500)),
     ]);
@@ -24,7 +26,7 @@ const game = new Phaser.Game({
   parent: 'game',
   width: W,
   height: H,
-  backgroundColor: '#10121a',
+  backgroundColor: '#07090c',
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   input: { activePointers: 2 },
   render: { antialias: true, powerPreference: 'low-power' },
