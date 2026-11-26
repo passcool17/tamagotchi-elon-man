@@ -1,4 +1,4 @@
-# GAME.md — Tamagotchi Elon Man 2.0
+# GAME.md — Tamagotchi Elon Man 2.0.1
 
 ## Concept
 Un animal virtuel façon Tamagotchi, mais c'est Elon Man, le petit robot de bureau.
@@ -47,7 +47,7 @@ Cinq jauges de 0 à 100 :
 
 ## Les 3 écrans OLED (`src/oled.js`)
 Le vrai robot a 3 ELEGOO 0,96" SSD1306 (128x64, monochrome) : 2 yeux et une bouche (`firmware/elonman_body/config.h`, `FACE_OLED3`).
-Sur les rendus `apercu-face.png`, les fenêtres des yeux sont hautes : les écrans des yeux sont montés sur le côté, donc dessinés en 64x128.
+Les 3 écrans sont montés à l'horizontale (confirmé par Pascal, 25 nov. 2026) : les yeux et la bouche sont dessinés en 128x64, comme le firmware (`setRotation(0)`). Les fenêtres hautes des rendus `apercu-face.png` étaient un placeholder du CAD, pas le montage réel.
 - Chaque écran est un framebuffer 1 bit. Les formes reprennent celles du firmware (yeux ronds avec pupille, yeux en « ^ » contents,
   trait fermé pour dormir, bouche « TALK » qui s'ouvre, 3 points qui pulsent pour réfléchir, « Z » pour dormir).
 - Dans le jeu, chaque pixel OLED devient un bloc de 3x3 texels dont la dernière ligne / colonne est plus sombre : on voit la matrice de pixels,

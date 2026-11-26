@@ -1,6 +1,6 @@
 {
   "name": "tamagotchi-elon-man",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "type": "module",
   "description": "Tamagotchi Elon Man — web pet game (no hardware).",

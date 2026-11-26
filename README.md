@@ -1,10 +1,10 @@
-# Tamagotchi Elon Man 2.0
+# Tamagotchi Elon Man 2.0.1
 
 Un petit jeu web où tu prends soin d'**Elon Man**, le robot de bureau du projet
 [elon-man](https://github.com/passcool17/elon-man) (MIT). Version web seulement, **aucun matériel requis**.
 Pensé d'abord pour téléphone (portrait, Samsung S20 FE), interface en français québécois.
 
-**Jouer (v2.0) :** https://passcool17.github.io/tamagotchi-elon-man/
+**Jouer (v2.0.1) :** https://passcool17.github.io/tamagotchi-elon-man/
 **Prototype v1 figé :** https://passcool17.github.io/tamagotchi-elon-man-v1/ (dépôt `passcool17/tamagotchi-elon-man-v1`)
 
 ## Quoi de neuf en 2.0
@@ -39,7 +39,7 @@ Pas de build : modules ES ; Phaser 3.90 et Motion 14 sont fournis dans `vendor/`
 ```
 index.html               page, polices locales, styles du panneau « Parler »
 src/logic.js             ÉTAT PUR : stats, déclin, actions, humeur, rattrapage hors ligne (inchangé depuis la v1)
-src/oled.js              VISAGE PUR : 3 framebuffers 1 bit (yeux 64x128, bouche 128x64) + export SSD1306
+src/oled.js              VISAGE PUR : 3 framebuffers 1 bit 128x64 (yeux + bouche, tous à l'horizontale) + export SSD1306
 src/servo.js             TÊTE PURE : modèle servo pan/hochement/roulis, mixage des tiges, gestes
 src/brain/demo.js        CERVEAU DÉMO PUR : réponses scriptées (québécois)
 src/brain/gateway.js     passerelle PC : fetch + délai + validation + retour démo
@@ -62,7 +62,7 @@ const left = toSSD1306(p.eyeL), right = toSSD1306(p.eyeR), mouth = toSSD1306(p.m
 | Élément | Valeur |
 |---|---|
 | Écran | 128x64, 1 bit, format GDDRAM SSD1306 : 8 pages x 128 colonnes, bit 0 = ligne du haut (même tampon qu'Adafruit_SSD1306) |
-| Yeux | dessinés en portrait 64x128 (écran monté sur le côté), tournés de 90° horaire dans `toSSD1306` |
+| Yeux et bouche | 128x64 paysage, les 3 écrans sont montés à l'horizontale (comme le firmware, `setRotation(0)`). `toSSD1306` n'applique aucune rotation |
 | Bouche | paysage 128x64 |
 | Paramètres | `mood` (`OLED_MOODS`), `t` (ms), `look` {x,y} de -1 à 1, `talk` 0 à 1 (ouverture de la bouche) |
 | Firmware | `firmware/elonman_body/config.h` : yeux 0x3C/0x3D sur I2C0, bouche 0x3C sur I2C1 |

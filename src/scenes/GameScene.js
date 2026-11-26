@@ -347,7 +347,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildFooter() {
-    this.add.text(W / 2, 1500, 'PC17 · v2.0', { fontFamily: FONT_PX, fontSize: '18px', color: '#f2b01e' }).setOrigin(0.5).setDepth(10).setAlpha(0.9);
+    this.add.text(W / 2, 1500, 'PC17 · v2.0.1', { fontFamily: FONT_PX, fontSize: '18px', color: '#f2b01e' }).setOrigin(0.5).setDepth(10).setAlpha(0.9);
     this.add.text(W / 2, 1538, 'Robot : projet elon-man (MIT)', { fontFamily: FONT_UI, fontSize: '20px', color: COL.dim }).setOrigin(0.5).setDepth(10);
   }
 

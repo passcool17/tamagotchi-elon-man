@@ -1,12 +1,10 @@
 // oled.js — pure renderer for the 3 monochrome OLEDs of the real robot (no Phaser, no DOM).
-// Hardware: 3 × ELEGOO 0.96" SSD1306, 128×64, 1 bit per pixel.
-//   mouth: panel in landscape, 128×64.
-//   eyes : same panel turned on its side in the head (tall windows, see print-v1/previews/apercu-face.png),
-//          so we draw them as 64×128 and rotate back for the panel export (setRotation(1) on the ESP32).
+// Hardware: 3 × ELEGOO 0.96" SSD1306, all mounted landscape (Pascal, 25 nov. 2026).
+// Each panel is 128×64, 1 bit, same as firmware/elonman_body (FACE_OLED3, setRotation(0)).
 // A framebuffer is { w, h, px: Uint8Array(w*h) } with 0 = off, 1 = lit.
 
 export const PANEL_W = 128, PANEL_H = 64;
-export const EYE_W = 64, EYE_H = 128;
+export const EYE_W = PANEL_W, EYE_H = PANEL_H;
 export const OLED_MOODS = ['happy', 'idle', 'hungry', 'sleepy', 'sad', 'bored', 'dirty', 'sleeping',
   'eating', 'playing', 'cleaning', 'talking', 'thinking'];
 
@@ -68,37 +66,48 @@ export function glyph(fb, ch, x, y, s = 2) {
   g.forEach((row, j) => [...row].forEach((c, i) => { if (c === '1') fillRect(fb, x + i * s, y + j * s, s, s); }));
 }
 
-// ---------- eyes (64×128 portrait) ----------
+// ---------- eyes (128×64 landscape, same as the mouth and the firmware) ----------
 function eyeOpen(fb, { lx = 0, ly = 0, open = 1, wide = 1, sad = 0, side = 1 }) {
   const cx = EYE_W / 2, cy = EYE_H / 2;
-  const w = 44 * wide, h = Math.max(4, 84 * open);
-  fillRoundRect(fb, cx - w / 2, cy - h / 2, w, h, Math.min(w / 2, 20));
-  if (h > 22) {
-    const pr = 11 * wide;
-    const px = cx + lx * 9, py = cy + ly * Math.min(22, h / 2 - pr - 4);
-    fillEllipse(fb, px, py, pr, pr * 1.25, 0);           // pupil (off pixels)
-    fillRect(fb, px - pr * 0.55, py - pr * 0.9, 4, 5, 1); // glint
+  // firmware idle eye is ~40×28; slightly larger here so it reads on a phone, still clearly landscape
+  const w = 80 * wide, h = Math.max(4, 44 * open);
+  fillRoundRect(fb, cx - w / 2, cy - h / 2, w, h, Math.min(h / 2, 20));
+  if (h > 14) {
+    const prx = 12 * wide, pry = Math.min(11 * wide, h / 2 - 3);
+    const px = cx + lx * 22, py = cy + ly * Math.min(10, h / 2 - pry - 2);
+    fillEllipse(fb, px, py, prx, pry, 0);
+    fillRect(fb, px - prx * 0.5, py - pry * 0.7, 5, 4, 1);
   }
   if (sad) {
-    // slanted upper lid: higher on the inner side (side = +1 left eye, -1 right eye)
     const top = cy - h / 2 - 1;
     for (let x = 0; x < EYE_W; x++) {
       const k = side > 0 ? x / EYE_W : 1 - x / EYE_W;
-      fillRect(fb, x, top, 1, 6 + sad * 30 * (1 - k), 0);
+      fillRect(fb, x, top, 1, 4 + sad * 22 * (1 - k), 0);
     }
   }
 }
-function eyeHappy(fb, ly = 0) { arc(fb, EYE_W / 2, EYE_H / 2 + 18 + ly, 24, 30, Math.PI * 1.06, Math.PI * 1.94, 10); }
-function eyeClosed(fb, ly = 0) { arc(fb, EYE_W / 2, EYE_H / 2 - 12 + ly, 24, 18, Math.PI * 0.1, Math.PI * 0.9, 8); }
+function eyeHappy(fb, ly = 0) {
+  // firmware FACE_HAPPY: a wide upward chevron (squint smile)
+  arc(fb, EYE_W / 2, EYE_H / 2 + 14 + ly, 36, 22, Math.PI * 1.12, Math.PI * 1.88, 8);
+}
+function eyeClosed(fb, ly = 0) {
+  // firmware FACE_SLEEP: a short horizontal bar
+  fillRoundRect(fb, EYE_W / 2 - 36, EYE_H / 2 - 3 + ly, 72, 6, 3);
+}
 function eyeSquint(fb, side) {
   const cx = EYE_W / 2, cy = EYE_H / 2, d = side > 0 ? 1 : -1;
-  line(fb, cx - 16 * d, cy - 18, cx + 14 * d, cy, 7); line(fb, cx + 14 * d, cy, cx - 16 * d, cy + 18, 7);
+  line(fb, cx - 28 * d, cy - 14, cx + 22 * d, cy, 7);
+  line(fb, cx + 22 * d, cy, cx - 28 * d, cy + 14, 7);
 }
 function eyeStar(fb, t) {
-  const cx = EYE_W / 2, cy = EYE_H / 2, r = 24 + Math.sin(t / 120) * 3;
-  for (let i = 0; i < 4; i++) { const a = (i * Math.PI) / 4; line(fb, cx - Math.cos(a) * r, cy - Math.sin(a) * r, cx + Math.cos(a) * r, cy + Math.sin(a) * r, i % 2 ? 4 : 8); }
-  fillEllipse(fb, cx, cy, 9, 9);
+  const cx = EYE_W / 2, cy = EYE_H / 2, r = 22 + Math.sin(t / 120) * 3;
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 4;
+    line(fb, cx - Math.cos(a) * r, cy - Math.sin(a) * r, cx + Math.cos(a) * r, cy + Math.sin(a) * r, i % 2 ? 4 : 8);
+  }
+  fillEllipse(fb, cx, cy, 8, 8);
 }
+
 
 // blink: closed for ~120 ms every ~4 s, offset so it never looks mechanical
 export function blinkOpen(t) {
@@ -117,7 +126,7 @@ function drawEye(fb, mood, t, side, look) {
     case 'eating': eyeHappy(fb, 4); break;
     case 'sleeping': eyeClosed(fb, 10); break;
     case 'sleepy': eyeOpen(fb, { lx, ly: 0.4, open: 0.28 * b + 0.02 }); fillRect(fb, 0, 0, EYE_W, EYE_H / 2 - 4, 0); break;
-    case 'sad': eyeOpen(fb, { lx, ly: 0.5, open: 0.75 * b, sad: 1, side }); if ((t / 900) % 2 < 1 && side > 0) fillEllipse(fb, 14, 104 + ((t / 30) % 18), 3, 4); break;
+    case 'sad': eyeOpen(fb, { lx, ly: 0.5, open: 0.75 * b, sad: 1, side }); if ((t / 900) % 2 < 1 && side > 0) fillEllipse(fb, 28, 50 + ((t / 30) % 10), 3, 4); break;
     case 'hungry': eyeOpen(fb, { lx: 0, ly: 0.9, open: b, wide: 1.05 }); break;
     case 'bored': eyeOpen(fb, { lx: 1, ly: 0.2, open: 0.42 * b }); fillRect(fb, 0, 0, EYE_W, EYE_H / 2 - 12, 0); break;
     case 'dirty': case 'cleaning': eyeSquint(fb, side); break;
@@ -185,15 +194,12 @@ export function toRGBA(fb, out, { on = [210, 238, 255], off = [6, 9, 14], grid =
 }
 
 // SSD1306 GDDRAM layout (what Adafruit_SSD1306's buffer holds): 8 pages × 128 columns, bit 0 = top row.
-// Portrait eye buffers (64×128) are rotated 90° clockwise back onto the 128×64 panel.
+// All 3 panels are already 128×64 landscape, so no rotation (firmware setRotation(0)).
 export function toSSD1306(fb) {
-  const portrait = fb.w === EYE_W && fb.h === EYE_H;
   const out = new Uint8Array((PANEL_W * PANEL_H) / 8);
   for (let y = 0; y < PANEL_H; y++) {
     for (let x = 0; x < PANEL_W; x++) {
-      // panel (x,y) ← portrait (y, 127 - x) for a clockwise mount
-      const v = portrait ? get(fb, y, EYE_H - 1 - x) : get(fb, x, y);
-      if (v) out[(y >> 3) * PANEL_W + x] |= 1 << (y & 7);
+      if (get(fb, x, y)) out[(y >> 3) * PANEL_W + x] |= 1 << (y & 7);
     }
   }
   return out;

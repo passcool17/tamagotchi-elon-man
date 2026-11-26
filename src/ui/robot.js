@@ -2,7 +2,7 @@
 // Front view, drawn with Phaser vector Graphics every frame (see GAME.md for why not SVG):
 //   black base · red tapered body + 2 orange chevrons · black pan plate (MG996R) · central column + cardan
 //   · 2 blue SG90 with horns and push rods · black X plate under the head · red dome head
-//   · grey face plate · 3 black OLED frames (2 eyes on their side + mouth), each a live 128×64 texture.
+//   · grey face plate · 3 black OLED frames (2 eyes + mouth, all landscape 128×64), each a live texture.
 // Only the head and the neck mechanism move. The base and the body never move.
 import { EYE_W, EYE_H, PANEL_W, PANEL_H } from '../oled.js';
 
@@ -12,8 +12,8 @@ export const ROBOT = {
   headBottom: -18,      // head local y of the flat bottom (relative to the pivot)
   rx: 258, ry: 352,     // dome half-width / height
   plate: { rx: 232, ry: 328, bottom: -32 },
-  oled: 1.1,            // game px per OLED pixel
-  eyeX: 60, eyeCY: -252, mouthCY: -102,
+  oled: 1.12,           // game px per OLED pixel (all 3 panels 128×64 landscape)
+  eyeX: 86, eyeCY: -220, mouthCY: -102,
   discY: 846, bodyTop: 872, bodyH: 246, bodyWTop: 300, bodyWBottom: 262, baseY: 1140,
   servoX: 80, hornY: 790, hornLen: 34,
   grid: 3,              // texture pixels per OLED pixel (gives the visible pixel matrix)
