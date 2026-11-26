@@ -1,4 +1,4 @@
-# GAME.md — Tamagotchi Elon Man 2.1
+# GAME.md — Tamagotchi Elon Man 2.2
 
 ## Concept
 Un animal virtuel façon Tamagotchi, mais c'est Elon Man, le petit robot de bureau.
@@ -62,7 +62,12 @@ calques DOM ou le re-rasteriser à chaque angle) alors que la tête, la plaque, 
 (écrasement en cos(pan), décalage de la plaque, rotation du roulis, longueur et angle des tiges). Avec Graphics, tout est dans le même
 canvas que le reste du jeu, net à toute échelle, sans fichier à charger. Corps et socle (immobiles) sont générés une fois en textures.
 
-**v2.1 (choix de Pascal, maquette 2, 26 nov. 2026) : formes EXACTES du projet elon-man d'origine** (`hardware/cad/elonman.scad`,
+**v2.2 (26 nov. 2026) : robot final print-v2, à l'échelle** (`src/ui/robot.js`, `DIMS`, 2,15 px/mm) : socle 150 × 36 noir à fentes,
+corps 120 → 100 × 180 rouge à 2 chevrons orange, moyeu + plateau Ø80 noirs et 2 SG90 bleus, tête 130 × 112 coupée 26 mm sous le centre
+(82 mm visibles), plaque grise elliptique 105,5 × 68,85 à menton plat, yeux à ±14,3 mm, bouche sourire 17,2 × 4,4. Hauteur 338,6 mm.
+Corps, socle, coque et plaque sont peints une fois en canvas 2× (dégradés, lumière en haut à gauche).
+
+Historique — **v2.1 (choix de Pascal, maquette 2, 26 nov. 2026) : formes EXACTES du projet elon-man d'origine** (`hardware/cad/elonman.scad`,
 `hardware/stl/apercu-all.png`), à 2,4 px/mm : tête rouge presque sphérique 110 × 95 × 90 (méplat de 4 mm sous le menton), fente caméra
 34 × 14 sur le dessus, trou de visage Ø62 avec lunette grise Ø74/Ø58, corps conique 120 → 100 × 180 (coins r = 10) avec 2 chevrons dorés
 (70 × 9, pointe 22) à 0,72 et 0,56 de la hauteur, socle noir 150 × 28 sans fentes, joug en U (disque Ø44) sur une colonne Ø26, 10 mm de cou.
@@ -150,7 +155,7 @@ Mise en page 720x1600 (ratio 9:20 comme le S20 FE).
 | Robot dessiné, visages OLED, icônes | faits par code pour ce jeu | MIT |
 
 ## Tests
-`npm test` : 74 tests Node : plaque de visage (découpes dans la zone active avec marge, parois imprimables, masque du sourire, bouche jamais allumée hors de la fente), logique, stockage + migration v1 → v2, voix (14 répliques, délais, priorité), OLED (géométrie 128x64, toutes les humeurs,
+`npm test` : 77 tests Node : dimensions print-v2 et échelle unique, plaque de visage (découpes dans la zone active avec marge, parois imprimables, masque du sourire, bouche jamais allumée hors de la fente), logique, stockage + migration v1 → v2, voix (14 répliques, délais, priorité), OLED (géométrie 128x64, toutes les humeurs,
 clignement, export SSD1306 avec rotation), servos (bornes, vitesse, sans dépassement, mixage des tiges, tous les gestes), cerveau démo,
 passerelle (fetch simulé : succès, délai, erreur réseau, HTTP 500, JSON invalide, URL refusée), service worker (ne supprime jamais les caches des prototypes v1 et v2).
 

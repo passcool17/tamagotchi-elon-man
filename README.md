@@ -1,12 +1,19 @@
-# Tamagotchi Elon Man 2.1
+# Tamagotchi Elon Man 2.2
 
 Un petit jeu web où tu prends soin d'**Elon Man**, le robot de bureau du projet
 [elon-man](https://github.com/passcool17/elon-man) (MIT). Version web seulement, **aucun matériel requis**.
 Pensé d'abord pour téléphone (portrait, Samsung S20 FE), interface en français québécois.
 
-**Jouer (v2.1) :** https://passcool17.github.io/tamagotchi-elon-man/
+**Jouer (v2.2) :** https://passcool17.github.io/tamagotchi-elon-man/
 **Prototype v1 figé :** https://passcool17.github.io/tamagotchi-elon-man-v1/ (dépôt `passcool17/tamagotchi-elon-man-v1`)  
-**Prototype v2.0.1 figé :** https://passcool17.github.io/tamagotchi-elon-man-v2/ (dépôt `passcool17/tamagotchi-elon-man-v2`)
+**Prototype v2.0.1 figé :** https://passcool17.github.io/tamagotchi-elon-man-v2/ (dépôt `passcool17/tamagotchi-elon-man-v2`)  
+**Prototype v2.1 figé :** https://passcool17.github.io/tamagotchi-elon-man-v2-1/ (dépôt `passcool17/tamagotchi-elon-man-v2-1`)
+
+## Quoi de neuf en 2.2
+- Le robot est dessiné **à l'échelle du robot final print-v2** (`hardware/print-v2`, `dimensions.md`) : 338,6 mm de haut, tête 130 mm
+  coupée à plat, grande plaque grise elliptique 105,5 × 68,85, yeux à 28,6 mm d'entraxe (18,5 × 7,8), bouche 17,2 × 4,4,
+  cou noir avec plateau Ø80 et 2 SG90 bleus, socle noir à fentes. PLA rouge, chevrons orange, PETG noir et gris.
+- Rendu plus soigné : dégradés, lumière douce, ombres de contact. Soins, sauvegarde, musique, voix, cerveau et Parler inchangés.
 
 ## Quoi de neuf en 2.1
 - Le robot reprend **exactement les formes du projet elon-man d'origine** (`elonman.scad`) : tête presque sphérique, fente caméra,

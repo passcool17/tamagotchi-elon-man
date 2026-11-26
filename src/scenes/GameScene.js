@@ -198,7 +198,7 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(0x62d6ff, 0.06);
     for (let y = 408; y < 1112; y += 32) for (let x = 16; x < W; x += 32) g.fillRect(x, y, 2, 2);
     // desk
-    const deskY = Math.round(ROBOT.baseY - ROBOT.baseH / 2 + 4);
+    const deskY = Math.round(ROBOT.floor - 14); // the base stands on the desk
     g.fillStyle(0x0e1116, 1); g.fillRect(0, deskY, W, 1240 - deskY);
     g.fillStyle(0x1d232b, 1); g.fillRect(0, deskY, W, 3);
   }
@@ -348,7 +348,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildFooter() {
-    this.add.text(W / 2, 1500, 'PC17 · v2.1', { fontFamily: FONT_PX, fontSize: '18px', color: '#f2b01e' }).setOrigin(0.5).setDepth(10).setAlpha(0.9);
+    this.add.text(W / 2, 1500, 'PC17 · v2.2', { fontFamily: FONT_PX, fontSize: '18px', color: '#f2b01e' }).setOrigin(0.5).setDepth(10).setAlpha(0.9);
     this.add.text(W / 2, 1538, 'Robot : projet elon-man (MIT)', { fontFamily: FONT_UI, fontSize: '20px', color: COL.dim }).setOrigin(0.5).setDepth(10);
   }
 

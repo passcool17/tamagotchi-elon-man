@@ -1,4 +1,6 @@
-// faceplate.js — v2.1 face plate geometry (pure, no Phaser, no DOM).
+// faceplate.js — face plate geometry (pure, no Phaser, no DOM).
+// v2.2: final print-v2 robot (elonman_v2.py, variant B chosen by Pascal 26 nov. 07:26): elliptical gray PETG plate
+// 105.5 × 68.85 mm with a flat chin, eyes at ±14.3 mm (28.6 mm apart), mouth = the SVG smile 17.2 × 4.4 mm.
 // The original elon-man head (hardware/cad/elonman.scad) has a Ø62 mm round face hole with a gray
 // bezel Ø74 / Ø58. v2.1 (Pascal's pick, mockup 2) puts a gray plate in that hole with printable
 // eye + mouth cutouts; three ELEGOO 0.96" SSD1306 (128×64, landscape) sit behind it.
@@ -6,11 +8,11 @@
 
 export const AA = { w: 21.74, h: 10.86 };           // OLED active area (128 × 64 px)
 export const PX_PER_MM = { x: 128 / AA.w, y: 64 / AA.h };
-export const PLATE = { outer: 74, hole: 62, inner: 58 };
+export const PLATE = { w: 105.5, h: 68.85, outer: 74, hole: 62, inner: 58 };
 
 export const CUTOUTS = {
-  eyeL: { kind: 'ellipse', x: -12, z: 8.5, w: 18.5, h: 7.8 },
-  eyeR: { kind: 'ellipse', x: 12, z: 8.5, w: 18.5, h: 7.8 },
+  eyeL: { kind: 'ellipse', x: -14.3, z: 8.5, w: 18.5, h: 7.8 },
+  eyeR: { kind: 'ellipse', x: 14.3, z: 8.5, w: 18.5, h: 7.8 },
   // thick round-capped smile: quadratic spine P0 → C → P2 (relative to the mouth centre), stroke `th`
   mouth: { kind: 'smile', x: 0, z: -11, p0: [-7, 1.2], c: [0, -1.2], p2: [7, 1.2], th: 3.2 },
 };
